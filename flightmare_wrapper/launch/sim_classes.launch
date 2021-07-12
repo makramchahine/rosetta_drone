@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="quad_name" default="hummingbird"/>
+
+  <include file="$(find rpg_rotors_interface)/launch/quadrotor_empty_world.launch">
+    <arg name="quad_name" value="$(arg quad_name)"/>
+    <arg name="enable_command_feedthrough" value="True"/>
+  </include>
+
+  <group ns="$(arg quad_name)" >
+
+
+    <node pkg="flightmare_wrapper" type="flightmare_wrapper_node" name="flightmare_wrapper_node">
+      <!-- <remap from="autopilot" to="hummingbird/autopilot" /> -->
+    </node>
+
+
+
+  </group>
+
+</launch>
