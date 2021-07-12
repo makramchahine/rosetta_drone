@@ -11,7 +11,7 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   pos_pub_ =  nh_.advertise<geometry_msgs::Point>("hummingbird/pos", 1000);
   land_pub_  = nh_.advertise<std_msgs::String>("hummingbird/land", 1000);
   off_pub_  = nh_.advertise<std_msgs::String>("hummingbird/off", 1000);
-  while(ros::ok){
+  while(ros::ok()){
     selection();
     ros::spinOnce();
   }
@@ -30,12 +30,14 @@ void UI::selection(){
       << "| [b] Go To Position              |"
       << std::endl;
   std::cout 
-  	  << "| [c] Land 				|"
+  	  << "| [c] Land 			|"
       << std::endl;
   std::cout 
-  	  << "| [d] Off 				|"
+  	  << "| [d] Off 			|"
       << std::endl;
-
+  std::cout 
+      << "| [q] Kill Node         |"
+      << std::endl;
   std::cout << "Please select command: ";
   char inputChar;
   std::cin >> inputChar;
@@ -94,7 +96,11 @@ void UI::selection(){
         off_pub_.publish(msg);
         ROS_INFO("Published");
         break;
-      }                  
+      } 
+    case 'q':
+      {
+        ros::shutdown();
+      }                 
   }
  
 }        

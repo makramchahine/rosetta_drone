@@ -40,6 +40,12 @@ cs_add_library(flightmare_wrapper_UI
     src/flightmare_wrapper_UI.cpp
 )
 
+target_link_libraries(flightmare_wrapper_UI
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  stdc++fs
+)
+
 target_link_libraries(flightmare_wrapper
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
@@ -55,6 +61,10 @@ cs_add_executable(flightmare_wrapper_UI_node
 
 target_link_libraries(flightmare_wrapper_node
   flightmare_wrapper
+  ${OpenCV_LIBRARIES}
+  stdc++fs
+  zmq
+  zmqpp
 )
 
 target_link_libraries(flightmare_wrapper_UI_node

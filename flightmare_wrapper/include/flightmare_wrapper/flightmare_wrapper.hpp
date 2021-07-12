@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 
 #include <autopilot/autopilot_states.h>
@@ -19,6 +21,26 @@
 
 #include <sstream>
 
+#include <memory>
+
+// ros
+#include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.h>
+#include <nav_msgs/Odometry.h>
+
+// rpg quadrotor
+#include <quadrotor_common/parameter_helper.h>
+
+// flightlib
+#include "flightlib/bridges/unity_bridge.hpp"
+#include "flightlib/bridges/unity_message_types.hpp"
+#include "flightlib/common/quad_state.hpp"
+#include "flightlib/common/types.hpp"
+#include "flightlib/objects/quadrotor.hpp"
+#include "flightlib/sensors/rgb_camera.hpp"
+
+using namespace flightlib;
+
 class MasterPlan {
  public:
   MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
@@ -31,6 +53,14 @@ class MasterPlan {
   void go_to_pos(const geometry_msgs::Point::ConstPtr &msg); //idk exactly how i want to execute a go to position function yet with user input
   void land(const std_msgs::String &msg); 
   void off(const std_msgs::String &msg); 
+
+  // callbacks
+  void mainLoopCallback(const ros::TimerEvent& event);
+  void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
+
+  bool setUnity(const bool render);
+  bool connectUnity(void);
+  bool loadParams(void);
 
  private:
   ros::NodeHandle nh_;
@@ -56,4 +86,36 @@ class MasterPlan {
   double sum_thrust_direction_error_squared_;
   double max_thrust_direction_error_;
   char input; //will be relevant to go to position function
+
+  // publisher
+  // camera publishers
+  image_transport::Publisher rgb_pub;
+  image_transport::Publisher depth_pub;
+  image_transport::Publisher segmentation_pub;
+  image_transport::Publisher opticalflow_pub;
+
+  // subscriber
+  ros::Subscriber sub_state_est_;
+
+  // main loop timer
+  ros::Timer timer_main_loop_;
+
+  // unity quadrotor
+  std::shared_ptr<Quadrotor> quad_ptr_;
+  std::shared_ptr<RGBCamera> rgb_camera_;
+  QuadState quad_state_;
+
+  std::shared_ptr<RGBCamera> rgb_camera2;
+
+  // Flightmare(Unity3D)
+  std::shared_ptr<UnityBridge> unity_bridge_ptr_;
+  SceneID scene_id_{UnityScene::WAREHOUSE};
+  bool unity_ready_{false};
+  bool unity_render_{false};
+  RenderMessage_t unity_output_;
+  uint16_t receive_id_{0};
+
+  // auxiliary variables
+  Scalar main_loop_freq_{50.0};
+  FrameID frame_id{0};
 };

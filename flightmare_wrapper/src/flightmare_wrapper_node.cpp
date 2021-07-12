@@ -4,7 +4,7 @@ int main(int argc, char **argv) {
   ROS_INFO("In main");
   ros::init(argc, argv, "sim_classes");
   ros::NodeHandle nh;
-  ros::NodeHandle pnh;
+  ros::NodeHandle pnh("~");
   MasterPlan mp(nh,pnh);
 
   ros::spin();
