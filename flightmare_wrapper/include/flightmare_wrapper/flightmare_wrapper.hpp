@@ -18,6 +18,7 @@
 #include "std_msgs/Float32.h"
 #include "std_msgs/String.h"
 #include "geometry_msgs/Point.h"
+#include "geometry_msgs/Quaternion.h"
 
 #include <sstream>
 
@@ -39,6 +40,9 @@
 #include "flightlib/objects/quadrotor.hpp"
 #include "flightlib/sensors/rgb_camera.hpp"
 
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 using namespace flightlib;
 
 class MasterPlan {
@@ -53,6 +57,8 @@ class MasterPlan {
   void go_to_pos(const geometry_msgs::Point::ConstPtr &msg); //idk exactly how i want to execute a go to position function yet with user input
   void land(const std_msgs::String &msg); 
   void off(const std_msgs::String &msg); 
+  void camera_pos(const geometry_msgs::Quaternion &msg); 
+  void take_pic(const std_msgs::String &msg);
 
   // callbacks
   void mainLoopCallback(const ros::TimerEvent& event);
@@ -78,6 +84,9 @@ class MasterPlan {
   ros::Subscriber pos_sub_;
   ros::Subscriber land_sub_;
   ros::Subscriber off_sub_;
+  ros::Subscriber camera_pos_sub_;
+  ros::Subscriber take_pic_sub_;
+
   bool executing_trajectory_;
 
   // Performance metrics variables

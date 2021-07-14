@@ -11,11 +11,15 @@
 
 #include <autopilot/autopilot_helper.h>
 #include <quadrotor_msgs/AutopilotFeedback.h>
+#include "geometry_msgs/Quaternion.h"
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include "ros/ros.h"
 #include "std_msgs/Float32.h"
 #include "std_msgs/String.h"
 #include "geometry_msgs/Point.h"
+#include <math.h>
 
 #include <sstream>
 
@@ -44,6 +48,8 @@ class UI {
   ros::Publisher pos_pub_;
   ros::Publisher land_pub_;
   ros::Publisher off_pub_;
+  ros::Publisher camera_pos_pub_;
+  ros::Publisher take_pic_pub_;
   bool executing_trajectory_;
 
   // Performance metrics variables

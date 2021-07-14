@@ -21,6 +21,8 @@ MasterPlan::MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   pos_sub_ = nh_.subscribe("pos", 1000, &MasterPlan::go_to_pos,this);
   land_sub_ = nh_.subscribe("land", 1000, &MasterPlan::land,this);
   off_sub_ = nh_.subscribe("off", 1000, &MasterPlan::off,this);
+  camera_pos_sub_ = nh_.subscribe("camera_pos", 1000, &MasterPlan::camera_pos, this);
+  take_pic_sub_ = nh_.subscribe("take_pic", 1000, &MasterPlan::take_pic, this);
 
   arm_pub_ = nh_.advertise<std_msgs::Bool>("bridge/arm", 1);
 
@@ -83,8 +85,6 @@ MasterPlan::MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   quad_ptr_->addRGBCamera(rgb_camera2);
 
 
-
-
   // wait until the gazebo and unity are loaded
   ros::Duration(5.0).sleep();
 
@@ -94,16 +94,19 @@ MasterPlan::MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
 }
 
 void MasterPlan::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
+  
+  //Quaternion current_orientation = quad_ptr_ -> getQuaternion();
+  /*
   quad_state_.x[QS::POSX] = (Scalar)msg->pose.pose.position.x;
   quad_state_.x[QS::POSY] = (Scalar)msg->pose.pose.position.y;
   quad_state_.x[QS::POSZ] = (Scalar)msg->pose.pose.position.z;
-  quad_state_.x[QS::ATTW] = (Scalar)msg->pose.pose.orientation.w;
-  quad_state_.x[QS::ATTX] = (Scalar)msg->pose.pose.orientation.x;
-  quad_state_.x[QS::ATTY] = (Scalar)msg->pose.pose.orientation.y;
-  quad_state_.x[QS::ATTZ] = (Scalar)msg->pose.pose.orientation.z;
+  quad_state_.x[QS::ATTW] = current_orientation.w();
+  quad_state_.x[QS::ATTX] = current_orientation.x();
+  quad_state_.x[QS::ATTY] = current_orientation.y();
+  quad_state_.x[QS::ATTZ] = current_orientation.z();
   //
   quad_ptr_->setState(quad_state_);
-
+  */
   ROS_INFO("POSE CALLBACK");
 
   
@@ -132,15 +135,11 @@ void MasterPlan::mainLoopCallback(const ros::TimerEvent &event) {
     rgb_msg->header.stamp = timestamp;
     rgb_pub.publish(rgb_msg);
 
-    ROS_INFO("Part 1");
-
     rgb_camera2->getDepthMap(img);
     sensor_msgs::ImagePtr depth_msg =
       cv_bridge::CvImage(std_msgs::Header(), "32FC1", img).toImageMsg();
     depth_msg->header.stamp = timestamp;
     depth_pub.publish(depth_msg);
-
-    ROS_INFO("Part 2");
 
     rgb_camera2->getSegmentation(img);
     sensor_msgs::ImagePtr segmentation_msg =
@@ -148,15 +147,11 @@ void MasterPlan::mainLoopCallback(const ros::TimerEvent &event) {
     segmentation_msg->header.stamp = timestamp;
     segmentation_pub.publish(segmentation_msg);
 
-    ROS_INFO("Part 3");
-
     rgb_camera2->getOpticalFlow(img);
     sensor_msgs::ImagePtr opticflow_msg =
       cv_bridge::CvImage(std_msgs::Header(), "bgr8", img).toImageMsg();
     opticflow_msg->header.stamp = timestamp;
     opticalflow_pub.publish(opticflow_msg);
-
-    ROS_INFO("Part 4");
 
     frame_id += 1;
   }
@@ -194,20 +189,15 @@ void MasterPlan::set_value(int x){
 }
 
 void MasterPlan::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
-  //ros::WallDuration sleep_t(10);
-  //sleep_t.sleep();
-
   autopilot_helper_.sendStart();
   ROS_INFO("Start");
-  //sleep_t.sleep();
   
   std_msgs::Bool arm_msg;
   arm_msg.data = true;
   arm_pub_.publish(arm_msg);
-  //sleep_t.sleep();
 }
 
-void MasterPlan::go_to_pos (const geometry_msgs::Point::ConstPtr &msg){ //gotta figure out how to deliver an input for z oops
+void MasterPlan::go_to_pos (const geometry_msgs::Point::ConstPtr &msg){ 
   const Eigen::Vector3d position_cmd = Eigen::Vector3d(msg->x, msg->y, msg->z);
   const double heading_cmd = 0.0;
   autopilot_helper_.sendPoseCommand(position_cmd, heading_cmd);
@@ -219,4 +209,46 @@ void MasterPlan::land (const std_msgs::String &msg){ //land the drone
 
 void MasterPlan::off(const std_msgs::String &msg){ //turn the motors off
   autopilot_helper_.sendOff();
+}
+
+void MasterPlan::camera_pos(const geometry_msgs::Quaternion &msg){
+  // attach camera to drone
+  //nav_msgs::Odometry::ConstPtr send;
+  Vector<3> current_pos = quad_ptr_ -> getPosition();
+
+  quad_state_.x[QS::POSX] = current_pos[0];
+  quad_state_.x[QS::POSY] = current_pos[1];
+  quad_state_.x[QS::POSZ] = current_pos[2];
+  quad_state_.x[QS::ATTW] = msg.w;
+  quad_state_.x[QS::ATTX] = msg.x;
+  quad_state_.x[QS::ATTY] = msg.y;
+  quad_state_.x[QS::ATTZ] = msg.z;
+  //
+  quad_ptr_->setState(quad_state_);
+
+}
+
+void MasterPlan::take_pic(const std_msgs::String &msg){
+    if (unity_render_ && unity_ready_) {
+      unity_bridge_ptr_->getRender(frame_id);
+      unity_bridge_ptr_->handleOutput();
+
+      if (quad_ptr_->getCollision()) {
+        // collision happened
+        ROS_INFO("COLLISION");
+      }
+
+      cv::Mat img;
+
+      ros::Time timestamp = ros::Time::now();
+
+      rgb_camera2->getRGBImage(img);
+      sensor_msgs::ImagePtr rgb_msg =
+        cv_bridge::CvImage(std_msgs::Header(), "bgr8", img).toImageMsg();
+      rgb_msg->header.stamp = timestamp;
+      rgb_pub.publish(rgb_msg);
+      cv::imwrite("/home/ita/flightmare_ws/dronepic.jpg", img);
+  }
+
+
 }

@@ -11,6 +11,8 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   pos_pub_ =  nh_.advertise<geometry_msgs::Point>("hummingbird/pos", 1000);
   land_pub_  = nh_.advertise<std_msgs::String>("hummingbird/land", 1000);
   off_pub_  = nh_.advertise<std_msgs::String>("hummingbird/off", 1000);
+  camera_pos_pub_ = nh_.advertise<geometry_msgs::Quaternion>("hummingbird/camera_pos", 1000);
+  take_pic_pub_ = nh_.advertise<std_msgs::String>("hummingbird/take_pic", 1000);
   while(ros::ok()){
     selection();
     ros::spinOnce();
@@ -35,6 +37,12 @@ void UI::selection(){
   std::cout 
   	  << "| [d] Off 			|"
       << std::endl;
+  std::cout 
+      << "| [e] Rotate Camera       |"
+      << std::endl;
+  std::cout 
+      << "| [f] Take Picture       |"
+      << std::endl;    
   std::cout 
       << "| [q] Kill Node         |"
       << std::endl;
@@ -96,7 +104,53 @@ void UI::selection(){
         off_pub_.publish(msg);
         ROS_INFO("Published");
         break;
-      } 
+      }
+    case 'e':
+      {
+        geometry_msgs::Quaternion msg;
+
+        std::cout << "Please insert Roll: ";
+        float roll;
+        std::cin >> roll;
+
+        std::cout << "Please insert Pitch: ";
+        float pitch;
+        std::cin >> pitch;
+
+        std::cout << "Please insert Yaw: ";
+        float yaw;
+        std::cin >> yaw;
+
+        tf2::Quaternion myQuaternion;
+
+        myQuaternion.setRPY((roll*M_PI/180),(pitch*M_PI/180),(yaw*M_PI/180));
+        geometry_msgs::Quaternion quat_msg;
+
+        myQuaternion.normalize();
+
+        msg = tf2::toMsg(myQuaternion);
+
+        msg.x = myQuaternion.x();
+        msg.y = myQuaternion.y();
+        msg.z = myQuaternion.z();
+        msg.w = myQuaternion.w();
+
+        
+
+        camera_pos_pub_.publish(msg);
+        ROS_INFO("Published");
+        break;
+      }       
+    case 'f':
+      {
+        std_msgs::String msg;
+        std::stringstream ss;
+        ss << "hi";
+        msg.data = ss.str();
+        take_pic_pub_.publish(msg);
+        ROS_INFO("Published");
+        break;        
+      }                    
     case 'q':
       {
         ros::shutdown();
