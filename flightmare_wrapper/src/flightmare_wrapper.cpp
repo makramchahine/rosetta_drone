@@ -94,9 +94,8 @@ MasterPlan::MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
 }
 
 void MasterPlan::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
+  Quaternion current_orientation = quad_state_.q();
   
-  //Quaternion current_orientation = quad_ptr_ -> getQuaternion();
-  /*
   quad_state_.x[QS::POSX] = (Scalar)msg->pose.pose.position.x;
   quad_state_.x[QS::POSY] = (Scalar)msg->pose.pose.position.y;
   quad_state_.x[QS::POSZ] = (Scalar)msg->pose.pose.position.z;
@@ -106,7 +105,7 @@ void MasterPlan::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   quad_state_.x[QS::ATTZ] = current_orientation.z();
   //
   quad_ptr_->setState(quad_state_);
-  */
+  
   ROS_INFO("POSE CALLBACK");
 
   
