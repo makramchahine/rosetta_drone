@@ -1,6 +1,6 @@
 #include "flightmare_wrapper/flightmare_wrapper.hpp"
 
-MasterPlan::MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
+FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh),
     scene_id_(UnityScene::INDUSTRIAL),
@@ -17,12 +17,14 @@ MasterPlan::MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
     ROS_INFO("[%s] Loaded all parameters.", pnh_.getNamespace().c_str());
   }
 
-  start_sub_ = nh_.subscribe("start", 1000, &MasterPlan::starter,this);
-  pos_sub_ = nh_.subscribe("pos", 1000, &MasterPlan::go_to_pos,this);
-  land_sub_ = nh_.subscribe("land", 1000, &MasterPlan::land,this);
-  off_sub_ = nh_.subscribe("off", 1000, &MasterPlan::off,this);
-  camera_pos_sub_ = nh_.subscribe("camera_pos", 1000, &MasterPlan::camera_pos, this);
-  take_pic_sub_ = nh_.subscribe("take_pic", 1000, &MasterPlan::take_pic, this);
+  start_sub_ = nh_.subscribe("start", 1000, &FlightmareWrapper::starter,this);
+  takeoff_sub_ = nh_.subscribe("start",1000, &FlightmareWrapper::takeoff, this);
+  pos_sub_ = nh_.subscribe("pos", 1000, &FlightmareWrapper::go_to_pos,this);
+  land_sub_ = nh_.subscribe("land", 1000, &FlightmareWrapper::land,this);
+  off_sub_ = nh_.subscribe("off", 1000, &FlightmareWrapper::off,this);
+  camera_pos_sub_ = nh_.subscribe("camera_pos", 1000, &FlightmareWrapper::camera_pos, this);
+  take_pic_sub_ = nh_.subscribe("take_pic", 1000, &FlightmareWrapper::take_pic, this);
+  stream_pic_sub_ = nh_.subscribe("stream_pic", 1000, &FlightmareWrapper::stream_pic, this);
 
   arm_pub_ = nh_.advertise<std_msgs::Bool>("bridge/arm", 1);
 
@@ -52,10 +54,10 @@ MasterPlan::MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
 
   // initialize subscriber call backs
   sub_state_est_ = nh_.subscribe("flight_pilot/state_estimate", 1,
-                                 &MasterPlan::poseCallback, this);
+                                 &FlightmareWrapper::poseCallback, this);
 
   timer_main_loop_ = nh_.createTimer(ros::Rate(main_loop_freq_),
-                                     &MasterPlan::mainLoopCallback, this);
+                                     &FlightmareWrapper::mainLoopCallback, this);
   timer_main_loop_.start();
 
   //ADDING CAMERA TO DRONE
@@ -93,9 +95,9 @@ MasterPlan::MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   connectUnity();
 }
 
-void MasterPlan::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
+void FlightmareWrapper::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   Quaternion current_orientation = quad_state_.q();
-  
+
   quad_state_.x[QS::POSX] = (Scalar)msg->pose.pose.position.x;
   quad_state_.x[QS::POSY] = (Scalar)msg->pose.pose.position.y;
   quad_state_.x[QS::POSZ] = (Scalar)msg->pose.pose.position.z;
@@ -111,7 +113,7 @@ void MasterPlan::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   
 }
 
-void MasterPlan::mainLoopCallback(const ros::TimerEvent &event) {
+void FlightmareWrapper::mainLoopCallback(const ros::TimerEvent &event) {
 
   ROS_INFO("LOOPING");
 
@@ -157,7 +159,7 @@ void MasterPlan::mainLoopCallback(const ros::TimerEvent &event) {
 
 }
 
-bool MasterPlan::setUnity(const bool render) {
+bool FlightmareWrapper::setUnity(const bool render) {
   unity_render_ = render;
   if (unity_render_ && unity_bridge_ptr_ == nullptr) {
     // create unity bridge
@@ -168,13 +170,13 @@ bool MasterPlan::setUnity(const bool render) {
   return true;
 }
 
-bool MasterPlan::connectUnity() {
+bool FlightmareWrapper::connectUnity() {
   if (!unity_render_ || unity_bridge_ptr_ == nullptr) return false;
   unity_ready_ = unity_bridge_ptr_->connectUnity(scene_id_);
   return unity_ready_;
 }
 
-bool MasterPlan::loadParams(void) {
+bool FlightmareWrapper::loadParams(void) {
   // load parameters
   quadrotor_common::getParam("main_loop_freq", main_loop_freq_, pnh_);
   quadrotor_common::getParam("unity_render", unity_render_, pnh_);
@@ -183,11 +185,11 @@ bool MasterPlan::loadParams(void) {
 }
 
 
-void MasterPlan::set_value(int x){
+void FlightmareWrapper::set_value(int x){
   input=x;
 }
 
-void MasterPlan::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
+void FlightmareWrapper::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
   autopilot_helper_.sendStart();
   ROS_INFO("Start");
   
@@ -196,21 +198,27 @@ void MasterPlan::starter (const std_msgs::String &msg){ //this will start the dr
   arm_pub_.publish(arm_msg);
 }
 
-void MasterPlan::go_to_pos (const geometry_msgs::Point::ConstPtr &msg){ 
+void FlightmareWrapper::takeoff (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
+  std_msgs::Bool arm_msg;
+  arm_msg.data = true;
+  arm_pub_.publish(arm_msg);
+}
+
+void FlightmareWrapper::go_to_pos (const geometry_msgs::Point::ConstPtr &msg){ 
   const Eigen::Vector3d position_cmd = Eigen::Vector3d(msg->x, msg->y, msg->z);
   const double heading_cmd = 0.0;
   autopilot_helper_.sendPoseCommand(position_cmd, heading_cmd);
 }
 
-void MasterPlan::land (const std_msgs::String &msg){ //land the drone
+void FlightmareWrapper::land (const std_msgs::String &msg){ //land the drone
   autopilot_helper_.sendLand();
 }
 
-void MasterPlan::off(const std_msgs::String &msg){ //turn the motors off
+void FlightmareWrapper::off(const std_msgs::String &msg){ //turn the motors off
   autopilot_helper_.sendOff();
 }
 
-void MasterPlan::camera_pos(const geometry_msgs::Quaternion &msg){
+void FlightmareWrapper::camera_pos(const geometry_msgs::Quaternion &msg){
   // attach camera to drone
   //nav_msgs::Odometry::ConstPtr send;
   Vector<3> current_pos = quad_ptr_ -> getPosition();
@@ -227,7 +235,7 @@ void MasterPlan::camera_pos(const geometry_msgs::Quaternion &msg){
 
 }
 
-void MasterPlan::take_pic(const std_msgs::String &msg){
+void FlightmareWrapper::take_pic(const std_msgs::String &msg){
     if (unity_render_ && unity_ready_) {
       unity_bridge_ptr_->getRender(frame_id);
       unity_bridge_ptr_->handleOutput();
@@ -246,8 +254,10 @@ void MasterPlan::take_pic(const std_msgs::String &msg){
         cv_bridge::CvImage(std_msgs::Header(), "bgr8", img).toImageMsg();
       rgb_msg->header.stamp = timestamp;
       rgb_pub.publish(rgb_msg);
-      cv::imwrite("/home/ita/flightmare_ws/dronepic.jpg", img);
+      cv::imwrite("/home/ita/flightmare_ws/simulator_pic.jpg", img);
   }
+}
 
+void FlightmareWrapper::stream_pic(const std_msgs::String &msg){
 
 }

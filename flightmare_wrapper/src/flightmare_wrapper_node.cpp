@@ -5,7 +5,7 @@ int main(int argc, char **argv) {
   ros::init(argc, argv, "sim_classes");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
-  MasterPlan mp(nh,pnh);
+  FlightmareWrapper mp(nh,pnh);
 
   ros::spin();
   return 0;

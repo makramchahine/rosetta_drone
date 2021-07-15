@@ -19,12 +19,12 @@
 
 #include <sstream>
 
-class MasterPlan {
+class FlightmareWrapper {
  public:
-  MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
+  FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  MasterPlan()
-      : MasterPlan(ros::NodeHandle(), ros::NodeHandle("~")) {}
+  FlightmareWrapper()
+      : FlightmareWrapper(ros::NodeHandle(), ros::NodeHandle("~")) {}
 
   void set_value(int x); //based off input from the publisher/user, will send to correct function within masterplan class
   void starter(const std_msgs::String &msg);
@@ -58,23 +58,23 @@ class MasterPlan {
   char input; //will be relevant to go to position function
 };
 
-MasterPlan::MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
+FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh) {
-  start_sub_ = nh_.subscribe("start", 1000, &MasterPlan::starter,this);
-  z_pos_sub_ = nh_.subscribe("z_pos", 1000, &MasterPlan::go_to_z_pos,this);
-  land_sub_ = nh_.subscribe("land", 1000, &MasterPlan::land,this);
-  off_sub_ = nh_.subscribe("off", 1000, &MasterPlan::off,this);
+  start_sub_ = nh_.subscribe("start", 1000, &FlightmareWrapper::starter,this);
+  z_pos_sub_ = nh_.subscribe("z_pos", 1000, &FlightmareWrapper::go_to_z_pos,this);
+  land_sub_ = nh_.subscribe("land", 1000, &FlightmareWrapper::land,this);
+  off_sub_ = nh_.subscribe("off", 1000, &FlightmareWrapper::off,this);
 
   arm_pub_ = nh_.advertise<std_msgs::Bool>("bridge/arm", 1);
 }
 
 
-void MasterPlan::set_value(int x){
+void FlightmareWrapper::set_value(int x){
   input=x;
 }
 
-void MasterPlan::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
+void FlightmareWrapper::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
   ros::WallDuration sleep_t(10);
   sleep_t.sleep();
 
@@ -88,17 +88,17 @@ void MasterPlan::starter (const std_msgs::String &msg){ //this will start the dr
   sleep_t.sleep();
 }
 
-void MasterPlan::go_to_z_pos (const std_msgs::String &msg){ //gotta figure out how to deliver an input for z oops
+void FlightmareWrapper::go_to_z_pos (const std_msgs::String &msg){ //gotta figure out how to deliver an input for z oops
   const Eigen::Vector3d position_cmd = Eigen::Vector3d(0.0, 0.0, 1.0);
   const double heading_cmd = 0.0;
   autopilot_helper_.sendPoseCommand(position_cmd, heading_cmd);
 }
 
-void MasterPlan::land (const std_msgs::String &msg){ //land the drone
+void FlightmareWrapper::land (const std_msgs::String &msg){ //land the drone
   autopilot_helper_.sendLand();
 }
 
-void MasterPlan::off(const std_msgs::String &msg){ //turn the motors off
+void FlightmareWrapper::off(const std_msgs::String &msg){ //turn the motors off
   autopilot_helper_.sendOff();
 }
 
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
   ros::init(argc, argv, "sim_classes");
   ros::NodeHandle nh;
   ros::NodeHandle pnh;
-  MasterPlan mp(nh,pnh);
+  FlightmareWrapper mp(nh,pnh);
 
   ros::spin();
   return 0;
