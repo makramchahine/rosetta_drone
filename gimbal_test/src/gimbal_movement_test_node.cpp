@@ -14,6 +14,9 @@
 #include <dji_osdk_ros/SetupCameraH264.h>
 #include <sensor_msgs/Image.h>
 
+#include <geometry_msgs/Vector3.h>
+#include <vector>
+
 extern "C"{
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -92,7 +95,7 @@ void sdl_show_rgb(uint8_t *rgb24Buf, int width, int height) {
 
 
     //SDL 2.0 Support for multiple windows
-    screen = SDL_CreateWindow("camera_stream_node", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+    screen = SDL_CreateWindow("Gimbal_Movement_Test_Node", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                               100, 100,SDL_WINDOW_OPENGL|SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
     if(!screen) {
       printf("SDL: could not create window - exiting:%s\n",SDL_GetError());
@@ -225,6 +228,7 @@ void mainCameraStreamCallBack(const sensor_msgs::Image& msg)
 int main(int argc, char** argv) {
   ros::init(argc, argv, "gimbal_movement_test_node");
   ros::NodeHandle nh;
+  ros::Publisher gimbal_angle_publisher_ = nh.advertise<geometry_msgs::Vector3>("gimbal_test_angle", 10);
 
   auto gimbal_control_client = nh.serviceClient<GimbalAction>("gimbal_task_control");
   auto camera_set_tap_zoom_point_client = nh.serviceClient<CameraTapZoomPoint>("camera_task_tap_zoom_point");
@@ -241,6 +245,24 @@ int main(int argc, char** argv) {
   auto main_camera_stream_sub = nh.subscribe("dji_osdk_ros/main_camera_images", 10, mainCameraStreamCallBack);
   dji_osdk_ros::SetupCameraStream setupCameraStream_;
 
+  float groll=0, gpitch=0, gyaw=0;
+  GimbalAction gimbalAction;
+  gimbalAction.request.is_reset = false;
+  gimbalAction.request.payload_index = static_cast<uint8_t>(dji_osdk_ros::PayloadIndex::PAYLOAD_INDEX_0);
+  gimbalAction.request.rotationMode = 0;
+  gimbalAction.request.pitch = gpitch;
+  gimbalAction.request.roll = groll;
+  gimbalAction.request.yaw = gyaw;
+  gimbalAction.request.time = 0.5;
+  gimbal_control_client.call(gimbalAction);
+
+  geometry_msgs::Vector3 gimbalv;
+  gimbalv.x=gpitch;
+  gimbalv.y=groll;
+  gimbalv.z=gyaw;
+  gimbal_angle_publisher_.publish(gimbalv);
+  ros::spinOnce();
+
   setupCameraStream_.request.cameraType = setupCameraStream_.request.MAIN_CAM;
   setupCameraStream_.request.start = 1;
   setup_camera_stream_client.call(setupCameraStream_);
@@ -251,7 +273,6 @@ int main(int argc, char** argv) {
   /*! sample loop start */
   char inputChar = 0;
   char inChar = 0;
-  float groll=0, gpitch=0, gyaw=0;
   //int a=0;
   while (true) {
     std::cout << std::endl;
@@ -308,36 +329,36 @@ int main(int argc, char** argv) {
         while (1){
           std::cout << std::endl;
           std::cout
-          << "| Available commands            |\n"
-          << "| [w] Pitch ++                  |\n"
-          << "| [s] Pitch --                  |\n"
-          << "| [a] Roll ++                   |\n"
-          << "| [d] Roll --                   |\n"
-          << "| [z] Yaw ++                    |\n"
-          << "| [x] Yaw --                    |\n"
-          << "| [c] Choose Value              |\n";
+          << "| Available commands                 |\n"
+          << "| [w] Pitch ++                       |\n"
+          << "| [s] Pitch --             Press     |\n"
+          << "| [a] Roll ++                p       |\n"
+          << "| [d] Roll --               to       |\n"
+          << "| [z] Yaw ++               exit      |\n"
+          << "| [x] Yaw --                         |\n"
+          << "| [c] Choose Value                   |\n";
           std::cin >> inChar;
           //inChar = getch();
           //a = cbreak();
           switch (inChar)
           {
           case 'w' :
-            gpitch +=2;
+            gpitch +=10;
             break;
           case 's' :
-            gpitch -=2;
+            gpitch -=10;
             break;
           case 'a' :
-            groll +=2;
+            groll +=10;
             break;
           case 'd' :
-            groll -=2;
+            groll -=10;
             break;
           case 'z' :
-            gyaw +=2;
+            gyaw +=10;
             break;
           case 'x' :
-            gyaw -=2;
+            gyaw -=10;
             break;
           case 'c' :
             std::cout << "Enter Pitch Roll Yaw Value";
@@ -361,6 +382,12 @@ int main(int argc, char** argv) {
           gimbalAction.request.yaw = gyaw;
           gimbalAction.request.time = 0.5;
           gimbal_control_client.call(gimbalAction);
+
+          gimbalv.x=gpitch;
+          gimbalv.y=groll;
+          gimbalv.z=gyaw;
+          gimbal_angle_publisher_.publish(gimbalv);
+          ros::spinOnce();
         }
         break;
       }
