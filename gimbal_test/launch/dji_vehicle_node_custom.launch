@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="gimbal_test" type="gimbal_movement_test_node" name="gimbal_movement_test_node" output="screen">
+    </node>
+</launch>
