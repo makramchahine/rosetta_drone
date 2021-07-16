@@ -8,11 +8,13 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh) {
   start_pub_ = nh_.advertise<std_msgs::String>("hummingbird/start", 1000);
+  takeoff_pub_ = nh_.advertise<std_msgs::String>("hummingbird/takeoff", 1000);
   pos_pub_ =  nh_.advertise<geometry_msgs::Point>("hummingbird/pos", 1000);
   land_pub_  = nh_.advertise<std_msgs::String>("hummingbird/land", 1000);
   off_pub_  = nh_.advertise<std_msgs::String>("hummingbird/off", 1000);
   camera_pos_pub_ = nh_.advertise<geometry_msgs::Quaternion>("hummingbird/camera_pos", 1000);
   take_pic_pub_ = nh_.advertise<std_msgs::String>("hummingbird/take_pic", 1000);
+  stream_pic_pub_ = nh_.advertise<std_msgs::String>("hummingbird/stream_pic", 1000);
   while(ros::ok()){
     selection();
     ros::spinOnce();
@@ -29,20 +31,26 @@ void UI::selection(){
       << "| [a] Start                         |"
       << std::endl;
   std::cout
-      << "| [b] Go To Position              |"
+      << "| [b] Takeoff                         |"
+      << std::endl;      
+  std::cout
+      << "| [c] Go To Position              |"
       << std::endl;
   std::cout 
-  	  << "| [c] Land 			|"
+  	  << "| [d] Land 			|"
       << std::endl;
   std::cout 
-  	  << "| [d] Off 			|"
+  	  << "| [e] Off 			|"
       << std::endl;
   std::cout 
-      << "| [e] Rotate Camera       |"
+      << "| [f] Rotate Camera       |"
       << std::endl;
   std::cout 
-      << "| [f] Take Picture       |"
-      << std::endl;    
+      << "| [g] Take Picture       |"
+      << std::endl;  
+    std::cout
+      << "| [h] Stream Picture                 |"
+      << std::endl;      
   std::cout 
       << "| [q] Kill Node         |"
       << std::endl;
@@ -63,6 +71,16 @@ void UI::selection(){
         break;
       }
     case 'b':
+      {
+        std_msgs::String msg;
+        std::stringstream ss;
+        ss << "hi";
+        msg.data = ss.str();
+        takeoff_pub_.publish(msg);
+        ROS_INFO("Published");
+        break;
+      }      
+    case 'c':
       {
 	  		geometry_msgs::Point msg;
 
@@ -85,7 +103,7 @@ void UI::selection(){
 			  ROS_INFO("Published");
       	break;
       }
-    case 'c':
+    case 'd':
       {
         std_msgs::String msg;
         std::stringstream ss;
@@ -95,7 +113,7 @@ void UI::selection(){
         ROS_INFO("Published");
         break;
       }
-    case 'd':
+    case 'e':
       {
         std_msgs::String msg;
         std::stringstream ss;
@@ -105,7 +123,7 @@ void UI::selection(){
         ROS_INFO("Published");
         break;
       }
-    case 'e':
+    case 'f':
       {
         geometry_msgs::Quaternion msg;
 
@@ -141,7 +159,7 @@ void UI::selection(){
         ROS_INFO("Published");
         break;
       }       
-    case 'f':
+    case 'g':
       {
         std_msgs::String msg;
         std::stringstream ss;
@@ -150,7 +168,17 @@ void UI::selection(){
         take_pic_pub_.publish(msg);
         ROS_INFO("Published");
         break;        
-      }                    
+      }           
+    case 'h':
+      {
+        std_msgs::String msg;
+        std::stringstream ss;
+        ss << "hi";
+        msg.data = ss.str();
+        stream_pic_pub_.publish(msg);
+        ROS_INFO("Published");
+        break;
+      }               
     case 'q':
       {
         ros::shutdown();

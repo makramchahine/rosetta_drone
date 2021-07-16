@@ -45,11 +45,14 @@ class UI {
   autopilot_helper::AutoPilotHelper autopilot_helper_;
 
   ros::Publisher start_pub_;
+  ros::Publisher takeoff_pub_;
   ros::Publisher pos_pub_;
   ros::Publisher land_pub_;
   ros::Publisher off_pub_;
   ros::Publisher camera_pos_pub_;
   ros::Publisher take_pic_pub_;
+  ros::Publisher stream_pic_pub_;
+
   bool executing_trajectory_;
 
   // Performance metrics variables

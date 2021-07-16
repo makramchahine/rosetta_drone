@@ -45,20 +45,22 @@
 
 using namespace flightlib;
 
-class MasterPlan {
+class FlightmareWrapper {
  public:
-  MasterPlan(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
+  FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  MasterPlan()
-      : MasterPlan(ros::NodeHandle(), ros::NodeHandle("~")) {}
+  FlightmareWrapper()
+      : FlightmareWrapper(ros::NodeHandle(), ros::NodeHandle("~")) {}
 
   void set_value(int x); //based off input from the publisher/user, will send to correct function within masterplan class
   void starter(const std_msgs::String &msg);
+  void takeoff(const std_msgs::String &msg);
   void go_to_pos(const geometry_msgs::Point::ConstPtr &msg); //idk exactly how i want to execute a go to position function yet with user input
   void land(const std_msgs::String &msg); 
   void off(const std_msgs::String &msg); 
   void camera_pos(const geometry_msgs::Quaternion &msg); 
   void take_pic(const std_msgs::String &msg);
+  void stream_pic(const std_msgs::String &msg);
 
   // callbacks
   void mainLoopCallback(const ros::TimerEvent& event);
@@ -81,11 +83,13 @@ class MasterPlan {
   autopilot_helper::AutoPilotHelper autopilot_helper_;
 
   ros::Subscriber start_sub_;
+  ros::Subscriber takeoff_sub_;
   ros::Subscriber pos_sub_;
   ros::Subscriber land_sub_;
   ros::Subscriber off_sub_;
   ros::Subscriber camera_pos_sub_;
   ros::Subscriber take_pic_sub_;
+  ros::Subscriber stream_pic_sub_;
 
   bool executing_trajectory_;
 

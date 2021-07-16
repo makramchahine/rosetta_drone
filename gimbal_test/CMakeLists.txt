@@ -1,8 +1,14 @@
-project(dji_wrapper)
+project(gimbal_test)
 
 cmake_minimum_required(VERSION 3.0.0)
 
 find_package(catkin_simple REQUIRED)
+
+find_package(OpenCV REQUIRED)
+
+option(BUILD_MP "Build Motion Planning" OFF)
+
+
 
 catkin_simple()
 
@@ -32,25 +38,31 @@ add_compile_options(-O3)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_ARCH_FLAGS} -Wall -DNDEBUG -fPIC")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -Wall -g")
 
-cs_add_library(dji_wrapper
-    src/dji_wrapper.cpp
+find_package(SDL2 REQUIRED)
+if (SDL2_FOUND)
+    message(STATUS "Found SDL2:")
+    message(STATUS " - Includes: ${SDL2_INCLUDE_DIRS}")
+    message(STATUS " - Libraries: ${SDL2_LIBRARIES}")
+    add_definitions(-DSDL2_INSTALLED)
+    set(SDL2_LIB_DEPEND_FLAG -lSDL2)
+else ()
+message(STATUS "--Recommendation : It is found that using \"cv::imshow\" on some platforms will cause more
+                CPU resources and more processing time in camera_stream_node. Using SDL to display images can improve this
+                situation. \n--Install SDL2 library in shell : \"sudo apt-get install libsdl2-dev\".")
+endif()
+
+
+
+cs_add_executable(gimbal_movement_test_node2
+   src/gimbal_movement_test_node.cpp
 )
 
-target_link_libraries(dji_wrapper
+target_link_libraries(gimbal_movement_test_node2
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
+  ${SDL2_LIB_DEPEND_FLAG}
   stdc++fs
   dji_osdk_ros
-)
-
-cs_add_executable(dji_wrapper_node
-   src/dji_wrapper_node.cpp
-)
-
-target_link_libraries(dji_wrapper_node
-  dji_wrapper
-  ${OpenCV_LIBRARIES}
-
 )
 
 # Finish
