@@ -34,28 +34,12 @@ class PaperFinder {
   image_transport::ImageTransport it_;
   image_transport::Subscriber camera_sub_;
 
-  // smoothing variables
-  vector<float> pastAreas;
-
   // parameters
   bool debug{false}; //whether or not to show intermediate filters
   bool show_video{true}; //whether or not to show webcam video with highlighted paper
   bool flip_image{false};
 
   float threshold_value{150};
-
-
-  /*
-  bool enable_smoothing;
-
-  // how many past datapoints to average together for final area publishing
-  int averagingFilterSize;
-  // removes this many of the smallest areas from the averaging filter - helps with smoothing by removing outliers
-  int numSmallestDelete;
-  */
-
-
-
 
   const std::string OPENCV_WINDOW{"Paper Finder"};
 

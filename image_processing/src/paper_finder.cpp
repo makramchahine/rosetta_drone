@@ -38,7 +38,7 @@ void PaperFinder::findArea(const sensor_msgs::ImageConstPtr& msg)
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return;
   }
-
+  
   Mat flipped;
   flip(cv_ptr->image, flipped, 1);
 
