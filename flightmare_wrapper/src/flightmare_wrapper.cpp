@@ -24,7 +24,9 @@ FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeH
   off_sub_ = nh_.subscribe("off", 1000, &FlightmareWrapper::off,this);
   camera_pos_sub_ = nh_.subscribe("camera_pos", 1000, &FlightmareWrapper::camera_pos, this);
   take_pic_sub_ = nh_.subscribe("take_pic", 1000, &FlightmareWrapper::take_pic, this);
-  stream_pic_sub_ = nh_.subscribe("stream_pic", 1000, &FlightmareWrapper::stream_pic, this);
+  set_waypoints_sub_ = nh_.subscribe("set_waypoints", 1000, &FlightmareWrapper::set_waypoints, this);
+
+
 
   arm_pub_ = nh_.advertise<std_msgs::Bool>("bridge/arm", 1);
 
@@ -135,6 +137,8 @@ void FlightmareWrapper::mainLoopCallback(const ros::TimerEvent &event) {
       cv_bridge::CvImage(std_msgs::Header(), "bgr8", img).toImageMsg();
     rgb_msg->header.stamp = timestamp;
     rgb_pub.publish(rgb_msg);
+
+
 
     rgb_camera2->getDepthMap(img);
     sensor_msgs::ImagePtr depth_msg =
@@ -258,6 +262,31 @@ void FlightmareWrapper::take_pic(const std_msgs::String &msg){
   }
 }
 
-void FlightmareWrapper::stream_pic(const std_msgs::String &msg){
+void FlightmareWrapper::set_waypoints(const nav_msgs::Path &msg){
+ // This is stuff from integration_test, please clean up and use what you need
+//   std::vector<Eigen::Vector3d> way_points ;
+
+   
+// //this is from racing - its cleaner pls use it here 
+//   std::size_t num_waypoints = way_points.size();
+
+
+//   Eigen::VectorXd segment_times(num_waypoints);
+//   segment_times << 10.0, 10.0, 10.0, 10.0;
+//   Eigen::VectorXd minimization_weights(5);
+//   minimization_weights << 0.0, 1.0, 1.0, 1.0, 1.0;
+
+//   polynomial_trajectories::PolynomialTrajectorySettings trajectory_settings =
+//     polynomial_trajectories::PolynomialTrajectorySettings(
+//       way_points, minimization_weights, 7, 4);
+
+//   polynomial_trajectories::PolynomialTrajectory trajectory =
+//     polynomial_trajectories::minimum_snap_trajectories::
+//       generateMinimumSnapRingTrajectory(segment_times, trajectory_settings,
+//                                         20.0, 20.0, 6.0);
+
+
+//   autopilot_helper_.sendTrajectory(trajectory);
+
 
 }
