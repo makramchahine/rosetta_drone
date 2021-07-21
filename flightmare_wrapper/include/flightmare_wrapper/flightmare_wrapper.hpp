@@ -4,6 +4,11 @@
 
 #include <autopilot/autopilot_states.h>
 #include <polynomial_trajectories/polynomial_trajectory_settings.h>
+#include <polynomial_trajectories/minimum_snap_trajectories.h>
+#include <polynomial_trajectories/polynomial_trajectories_common.h>
+#include <polynomial_trajectories/polynomial_trajectory.h>
+#include <quadrotor_common/trajectory_point.h>
+
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/geometry_eigen_conversions.h>
 #include <std_msgs/Bool.h>
@@ -19,6 +24,7 @@
 #include "std_msgs/String.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Quaternion.h"
+#include "nav_msgs/Path.h"
 
 #include <sstream>
 
@@ -60,7 +66,7 @@ class FlightmareWrapper {
   void off(const std_msgs::String &msg); 
   void camera_pos(const geometry_msgs::Quaternion &msg); 
   void take_pic(const std_msgs::String &msg);
-  void stream_pic(const std_msgs::String &msg);
+  void set_waypoints(const nav_msgs::Path &msg);
 
   // callbacks
   void mainLoopCallback(const ros::TimerEvent& event);
@@ -89,7 +95,7 @@ class FlightmareWrapper {
   ros::Subscriber off_sub_;
   ros::Subscriber camera_pos_sub_;
   ros::Subscriber take_pic_sub_;
-  ros::Subscriber stream_pic_sub_;
+  ros::Subscriber set_waypoints_sub_;
 
   bool executing_trajectory_;
 
@@ -99,6 +105,7 @@ class FlightmareWrapper {
   double sum_thrust_direction_error_squared_;
   double max_thrust_direction_error_;
   char input; //will be relevant to go to position function
+
 
   // publisher
   // camera publishers

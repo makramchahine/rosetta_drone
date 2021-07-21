@@ -7,14 +7,14 @@
 UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh) {
-  start_pub_ = nh_.advertise<std_msgs::String>("hummingbird/start", 1000);
-  takeoff_pub_ = nh_.advertise<std_msgs::String>("hummingbird/takeoff", 1000);
-  pos_pub_ =  nh_.advertise<geometry_msgs::Point>("hummingbird/pos", 1000);
-  land_pub_  = nh_.advertise<std_msgs::String>("hummingbird/land", 1000);
-  off_pub_  = nh_.advertise<std_msgs::String>("hummingbird/off", 1000);
-  camera_pos_pub_ = nh_.advertise<geometry_msgs::Quaternion>("hummingbird/camera_pos", 1000);
-  take_pic_pub_ = nh_.advertise<std_msgs::String>("hummingbird/take_pic", 1000);
-  stream_pic_pub_ = nh_.advertise<std_msgs::String>("hummingbird/stream_pic", 1000);
+  start_pub_ = nh_.advertise<std_msgs::String>("/start", 1000);
+  takeoff_pub_ = nh_.advertise<std_msgs::String>("/takeoff", 1000);
+  pos_pub_ =  nh_.advertise<geometry_msgs::Point>("/pos", 1000);
+  land_pub_  = nh_.advertise<std_msgs::String>("/land", 1000);
+  off_pub_  = nh_.advertise<std_msgs::String>("/off", 1000);
+  camera_pos_pub_ = nh_.advertise<geometry_msgs::Quaternion>("/camera_pos", 1000);
+  take_pic_pub_ = nh_.advertise<std_msgs::String>("/take_pic", 1000);
+  set_waypoints_pub_ = nh_.advertise<nav_msgs::Path>("/set_waypoints",1000);
   while(ros::ok()){
     selection();
     ros::spinOnce();
@@ -48,9 +48,9 @@ void UI::selection(){
   std::cout 
       << "| [g] Take Picture       |"
       << std::endl;  
-    std::cout
-      << "| [h] Stream Picture                 |"
-      << std::endl;      
+  std::cout 
+      << "| [h] Set and go to Waypoints       |"
+      << std::endl;         
   std::cout 
       << "| [q] Kill Node         |"
       << std::endl;
@@ -171,14 +171,68 @@ void UI::selection(){
       }           
     case 'h':
       {
-        std_msgs::String msg;
-        std::stringstream ss;
-        ss << "hi";
-        msg.data = ss.str();
-        stream_pic_pub_.publish(msg);
-        ROS_INFO("Published");
-        break;
-      }               
+    //     nav_msgs::Path path;
+    //     geometry_msgs::PoseStamped pose;
+    //     std::cout
+    //         << "| Available commands:               |"
+    //         << std::endl;
+    //     std::cout
+    //         << "| [a] Set Waypoint                         |"
+    //         << std::endl;
+    //     std::cout
+    //         << "| [b] Start Path                         |"
+    //         << std::endl;
+    //     char newInput;
+    //     std::cin >> newInput;
+    //     switch (inputChar)
+    //     {
+    //       case 'a':
+    //         {
+    //           std::cout << "Please insert X Position: ";
+    //           float x;
+    //           std::cin >> x;
+
+    //           std::cout << "Please insert Y Position: ";
+    //           float y;
+    //           std::cin >> y;
+
+    //           std::cout << "Please insert Z Position: ";
+    //           float z;
+    //           std::cin >> z;  
+
+    //           pose.pose.position.x = x;
+    //           pose.pose.position.y = y;
+    //           pose.pose.position.z = z;
+              
+    //           path.poses.push_back(pose);
+
+    //           std::cout << "Please insert second X Position: ";
+    //           std::cin >> x;
+
+    //           std::cout << "Please insert second Y Position: ";
+    //           std::cin >> y;
+
+    //           std::cout << "Please insert second Z Position: ";
+    //           std::cin >> z;  
+
+    //           pose.pose.position.x = x;
+    //           pose.pose.position.y = y;
+    //           pose.pose.position.z = z;
+              
+    //           path.poses.push_back(pose);
+
+    //           set_waypoints_pub_.publish(path);
+    //           break;
+    //         }
+    //       case 'b':
+    //         {
+    //           set_waypoints_pub_.publish(path);
+    //           break;
+    //         }      
+
+    //     break;
+    //   }
+     }                     
     case 'q':
       {
         ros::shutdown();

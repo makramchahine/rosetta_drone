@@ -62,7 +62,7 @@ class DJIWrapper {
   void go_to_pos(const geometry_msgs::Point::ConstPtr &msg); //idk exactly how i want to execute a go to position function yet with user input
   void land(const std_msgs::String &msg); 
   void off(const std_msgs::String &msg); 
-  void camera_pos(const geometry_msgs::Quaternion &msg); 
+  void camera_pos(const geometry_msgs::Quaternion::ConstPtr &msg); 
   void take_pic(const std_msgs::String &msg);
 
  private:

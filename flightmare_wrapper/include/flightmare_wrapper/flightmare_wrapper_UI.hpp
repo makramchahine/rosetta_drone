@@ -18,6 +18,7 @@
 #include "ros/ros.h"
 #include "std_msgs/Float32.h"
 #include "std_msgs/String.h"
+#include "nav_msgs/Path.h"
 #include "geometry_msgs/Point.h"
 #include <math.h>
 
@@ -51,7 +52,7 @@ class UI {
   ros::Publisher off_pub_;
   ros::Publisher camera_pos_pub_;
   ros::Publisher take_pic_pub_;
-  ros::Publisher stream_pic_pub_;
+  ros::Publisher set_waypoints_pub_;
 
   bool executing_trajectory_;
 
