@@ -29,6 +29,7 @@ class PaperFinder {
 
   // publisher
   ros::Publisher area_pub_;
+  ros::Publisher area_percentage_pub_;
 
   // subscriber
   image_transport::ImageTransport it_;
@@ -39,7 +40,7 @@ class PaperFinder {
   bool show_video{true}; //whether or not to show webcam video with highlighted paper
   bool flip_image{false};
 
-  float threshold_value{150};
+  float threshold_value{160};
 
   const std::string OPENCV_WINDOW{"Paper Finder"};
 

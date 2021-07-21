@@ -6,10 +6,12 @@ PaperFinder::PaperFinder(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   	it_(nh) {
 
 
-  camera_sub_ = it_.subscribe("/camera/image_raw", 10,
+  camera_sub_ = it_.subscribe("/webcam/image_raw", 10,
       &PaperFinder::findArea, this);
 
   area_pub_ = nh_.advertise<std_msgs::Float32>("area", 1000);
+
+  area_percentage_pub_ = nh_.advertise<std_msgs::Float32>("area_percentage", 1000);
 
   
   if(show_video)
@@ -113,13 +115,44 @@ void PaperFinder::findArea(const sensor_msgs::ImageConstPtr& msg)
   Scalar color = Scalar( 255, 255, 255 );
   drawContours( drawing, contours, maxAreaIndex, color, 2, LINE_8, hierarchy, 0 );
 
-  float realMaxArea = contourArea(contours[maxAreaIndex]);
+  // contourArea() gives innacurate area measurements that don't align with pixel counts well
+  // so instead we draw the contour and count how many pixels it has if we need precision
+  /*
+  Mat filled = Mat::zeros( canny_output.size(), CV_8UC3 );;
+  Scalar white = Scalar( 255, 255, 255 );
+  drawContours( filled, contours, maxAreaIndex, white, -1);
+  */
 
-  std_msgs::Float32 areaAsg;
+  //imshow("filled", filled);
 
-  areaAsg.data = realMaxArea;
+  //approximate contour to hopefully get a rectangle
+  vector<Point> cnt;
+  // auto epsilon = 0.01*arcLength(contours[maxAreaIndex],true);
+  // approxPolyDP(contours[maxAreaIndex], cnt, epsilon,true);
+  convexHull(contours[maxAreaIndex], cnt);
+  contours[maxAreaIndex] = cnt;
+  // contours[maxAreaIndex] = approx;
 
-  area_pub_.publish(areaAsg); 
+  Mat drawing2 = Mat::zeros( canny_output.size(), CV_8UC3 );
+  drawContours(drawing2,contours, maxAreaIndex, color, 2, LINE_8, hierarchy, 0 );
+
+  if(debug)
+    imshow("approx", drawing2);
+
+  float realMaxArea = contourArea(contours[maxAreaIndex]);//countNonZero(filled);
+
+  std_msgs::Float32 areaMsg;
+
+  areaMsg.data = realMaxArea;
+
+  area_pub_.publish(areaMsg); 
+
+
+  std_msgs::Float32 areaPercentageMsg;
+
+  areaPercentageMsg.data = realMaxArea / (cv_ptr->image.rows * cv_ptr->image.cols);
+
+  area_percentage_pub_.publish(areaPercentageMsg); 
 
   if(debug)
     imshow( "Contours", drawing );

@@ -59,6 +59,28 @@ target_link_libraries(paper_finder_node
   zmqpp
 )
 
+cs_add_library(paper_commander
+    src/paper_commander.cpp
+)
+
+target_link_libraries(paper_commander
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  stdc++fs
+)
+
+cs_add_executable(paper_commander_node
+   src/paper_commander_node.cpp
+)
+
+target_link_libraries(paper_commander_node
+  paper_commander
+  ${OpenCV_LIBRARIES}
+  stdc++fs
+  zmq
+  zmqpp
+)
+
 # Finish
 cs_install()
 cs_export()
