@@ -36,11 +36,11 @@ class PaperFinder {
   image_transport::Subscriber camera_sub_;
 
   // parameters
-  bool debug{false}; //whether or not to show intermediate filters
+  bool debug{true}; //whether or not to show intermediate filters
   bool show_video{true}; //whether or not to show webcam video with highlighted paper
-  bool flip_image{false};
+  bool flip_image{true};
 
-  float threshold_value{160};
+  float threshold_value{150};
 
   const std::string OPENCV_WINDOW{"Paper Finder"};
 

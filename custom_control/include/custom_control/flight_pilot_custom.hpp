@@ -23,6 +23,8 @@
 #include "flightlib/objects/quadrotor.hpp"
 #include "flightlib/sensors/rgb_camera.hpp"
 
+#include "geometry_msgs/Quaternion.h"
+
 using namespace flightlib;
 
 namespace flightros {
@@ -36,6 +38,7 @@ class FlightPilotCustom {
   // callbacks
   void mainLoopCallback(const ros::TimerEvent& event);
   void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
+  void gimbalOrientationCallback(const geometry_msgs::Quaternion::ConstPtr& msg);
 
   bool setUnity(const bool render);
   bool connectUnity(void);
@@ -55,6 +58,7 @@ class FlightPilotCustom {
 
   // subscriber
   ros::Subscriber sub_state_est_;
+  ros::Subscriber gimbal_orientation_sub_;
 
   // main loop timer
   ros::Timer timer_main_loop_;
@@ -64,7 +68,13 @@ class FlightPilotCustom {
   std::shared_ptr<RGBCamera> rgb_camera_;
   QuadState quad_state_;
 
+  std::shared_ptr<Quadrotor> gimbal_ptr_;
+  QuadState gimbal_state_;
+
   std::shared_ptr<RGBCamera> rgb_camera2;
+
+  Vector<3>  gimbal_position;
+  Quaternion gimbal_orientation;
 
   // Flightmare(Unity3D)
   std::shared_ptr<UnityBridge> unity_bridge_ptr_;

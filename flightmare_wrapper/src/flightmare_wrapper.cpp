@@ -3,7 +3,7 @@
 FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh),
-    scene_id_(UnityScene::INDUSTRIAL),
+    scene_id_(UnityScene::INDUSTRIAL_CUSTOM),
     unity_ready_(false),
     unity_render_(false),
     receive_id_(0),
@@ -18,7 +18,7 @@ FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeH
   }
 
   start_sub_ = nh_.subscribe("start", 1000, &FlightmareWrapper::starter,this);
-  takeoff_sub_ = nh_.subscribe("start",1000, &FlightmareWrapper::takeoff, this);
+  takeoff_sub_ = nh_.subscribe("takeoff",1000, &FlightmareWrapper::takeoff, this);
   pos_sub_ = nh_.subscribe("pos", 1000, &FlightmareWrapper::go_to_pos,this);
   land_sub_ = nh_.subscribe("land", 1000, &FlightmareWrapper::land,this);
   off_sub_ = nh_.subscribe("off", 1000, &FlightmareWrapper::off,this);
@@ -197,9 +197,6 @@ void FlightmareWrapper::starter (const std_msgs::String &msg){ //this will start
   autopilot_helper_.sendStart();
   ROS_INFO("Start");
   
-  std_msgs::Bool arm_msg;
-  arm_msg.data = true;
-  arm_pub_.publish(arm_msg);
 }
 
 void FlightmareWrapper::takeoff (const std_msgs::String &msg){ //this will start the drone and then do arm bridge

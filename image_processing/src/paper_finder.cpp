@@ -6,7 +6,7 @@ PaperFinder::PaperFinder(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   	it_(nh) {
 
 
-  camera_sub_ = it_.subscribe("/webcam/image_raw", 10,
+  camera_sub_ = it_.subscribe("/dji_osdk_ros/main_camera_images", 10,
       &PaperFinder::findArea, this);
 
   area_pub_ = nh_.advertise<std_msgs::Float32>("area", 1000);
@@ -40,6 +40,8 @@ void PaperFinder::findArea(const sensor_msgs::ImageConstPtr& msg)
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return;
   }
+
+  int imageArea = cv_ptr->image.rows * cv_ptr->image.cols;
   
   Mat flipped;
   flip(cv_ptr->image, flipped, 1);
@@ -51,9 +53,10 @@ void PaperFinder::findArea(const sensor_msgs::ImageConstPtr& msg)
   	cvtColor(cv_ptr->image, greyMat, COLOR_BGR2GRAY);
   }
   
+  int blurSize = 9 * imageArea / (640.0*480.0);
 
   Mat blurred;
-  blur( greyMat, blurred, Size( 9, 9 ), Point(-1,-1) );
+  blur( greyMat, blurred, Size( blurSize, blurSize ), Point(-1,-1) );
 
   Mat normalized;
   normalize(blurred, normalized, 255, 0, NORM_MINMAX,-1, noArray());
@@ -150,7 +153,7 @@ void PaperFinder::findArea(const sensor_msgs::ImageConstPtr& msg)
 
   std_msgs::Float32 areaPercentageMsg;
 
-  areaPercentageMsg.data = realMaxArea / (cv_ptr->image.rows * cv_ptr->image.cols);
+  areaPercentageMsg.data = realMaxArea / imageArea;
 
   area_percentage_pub_.publish(areaPercentageMsg); 
 

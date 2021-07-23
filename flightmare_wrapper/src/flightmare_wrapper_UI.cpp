@@ -7,14 +7,14 @@
 UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh) {
-  start_pub_ = nh_.advertise<std_msgs::String>("/start", 1000);
-  takeoff_pub_ = nh_.advertise<std_msgs::String>("/takeoff", 1000);
-  pos_pub_ =  nh_.advertise<geometry_msgs::Point>("/pos", 1000);
-  land_pub_  = nh_.advertise<std_msgs::String>("/land", 1000);
-  off_pub_  = nh_.advertise<std_msgs::String>("/off", 1000);
-  camera_pos_pub_ = nh_.advertise<geometry_msgs::Quaternion>("/camera_pos", 1000);
-  take_pic_pub_ = nh_.advertise<std_msgs::String>("/take_pic", 1000);
-  set_waypoints_pub_ = nh_.advertise<nav_msgs::Path>("/set_waypoints",1000);
+  start_pub_ = nh_.advertise<std_msgs::String>("/hummingbird/start", 1000);
+  takeoff_pub_ = nh_.advertise<std_msgs::String>("/hummingbird/takeoff", 1000);
+  pos_pub_ =  nh_.advertise<geometry_msgs::Point>("/hummingbird/pos", 1000);
+  land_pub_  = nh_.advertise<std_msgs::String>("/hummingbird/land", 1000);
+  off_pub_  = nh_.advertise<std_msgs::String>("/hummingbird/off", 1000);
+  camera_pos_pub_ = nh_.advertise<geometry_msgs::Quaternion>("/hummingbird/camera_pos", 1000);
+  take_pic_pub_ = nh_.advertise<std_msgs::String>("/hummingbird/take_pic", 1000);
+  set_waypoints_pub_ = nh_.advertise<nav_msgs::Path>("/hummingbird/set_waypoints",1000);
   while(ros::ok()){
     selection();
     ros::spinOnce();
@@ -141,7 +141,12 @@ void UI::selection(){
 
         tf2::Quaternion myQuaternion;
 
+        /*
         myQuaternion.setRPY((roll*M_PI/180),(pitch*M_PI/180),(yaw*M_PI/180));
+        geometry_msgs::Quaternion quat_msg;
+        */
+
+        myQuaternion.setRPY((pitch*M_PI/180),(roll*M_PI/180),(yaw*M_PI/180));
         geometry_msgs::Quaternion quat_msg;
 
         myQuaternion.normalize();
