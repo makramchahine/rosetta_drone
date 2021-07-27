@@ -48,6 +48,7 @@ class UI {
   ros::Publisher start_pub_;
   ros::Publisher takeoff_pub_;
   ros::Publisher pos_pub_;
+  ros::Publisher heading_pub_;
   ros::Publisher land_pub_;
   ros::Publisher off_pub_;
   ros::Publisher camera_pos_pub_;

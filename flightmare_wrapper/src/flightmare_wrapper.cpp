@@ -18,8 +18,9 @@ FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeH
   }
 
   start_sub_ = nh_.subscribe("start", 1000, &FlightmareWrapper::starter,this);
-  takeoff_sub_ = nh_.subscribe("start",1000, &FlightmareWrapper::takeoff, this);
+  takeoff_sub_ = nh_.subscribe("takeoff",1000, &FlightmareWrapper::takeoff, this);
   pos_sub_ = nh_.subscribe("pos", 1000, &FlightmareWrapper::go_to_pos,this);
+  heading_sub_ = nh_.subscribe("heading", 1000, &FlightmareWrapper::set_heading, this);
   land_sub_ = nh_.subscribe("land", 1000, &FlightmareWrapper::land,this);
   off_sub_ = nh_.subscribe("off", 1000, &FlightmareWrapper::off,this);
   camera_pos_sub_ = nh_.subscribe("camera_pos", 1000, &FlightmareWrapper::camera_pos, this);
@@ -98,15 +99,15 @@ FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeH
 }
 
 void FlightmareWrapper::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
-  Quaternion current_orientation = quad_state_.q();
+  //Quaternion current_orientation = quad_state_.q();
 
   quad_state_.x[QS::POSX] = (Scalar)msg->pose.pose.position.x;
   quad_state_.x[QS::POSY] = (Scalar)msg->pose.pose.position.y;
   quad_state_.x[QS::POSZ] = (Scalar)msg->pose.pose.position.z;
-  quad_state_.x[QS::ATTW] = current_orientation.w();
-  quad_state_.x[QS::ATTX] = current_orientation.x();
-  quad_state_.x[QS::ATTY] = current_orientation.y();
-  quad_state_.x[QS::ATTZ] = current_orientation.z();
+  quad_state_.x[QS::ATTW] = (Scalar)msg->pose.pose.orientation.w;
+  quad_state_.x[QS::ATTX] = (Scalar)msg->pose.pose.orientation.x;
+  quad_state_.x[QS::ATTY] = (Scalar)msg->pose.pose.orientation.y;
+  quad_state_.x[QS::ATTZ] = (Scalar)msg->pose.pose.orientation.z;
   //
   quad_ptr_->setState(quad_state_);
   
@@ -189,17 +190,9 @@ bool FlightmareWrapper::loadParams(void) {
 }
 
 
-void FlightmareWrapper::set_value(int x){
-  input=x;
-}
-
 void FlightmareWrapper::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
   autopilot_helper_.sendStart();
   ROS_INFO("Start");
-  
-  std_msgs::Bool arm_msg;
-  arm_msg.data = true;
-  arm_pub_.publish(arm_msg);
 }
 
 void FlightmareWrapper::takeoff (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
@@ -210,8 +203,33 @@ void FlightmareWrapper::takeoff (const std_msgs::String &msg){ //this will start
 
 void FlightmareWrapper::go_to_pos (const geometry_msgs::Point::ConstPtr &msg){ 
   const Eigen::Vector3d position_cmd = Eigen::Vector3d(msg->x, msg->y, msg->z);
-  const double heading_cmd = 0.0;
+  Eigen::Quaternion current_orientation = quad_state_.q();
+
+  geometry_msgs::Quaternion goemetry_quat;
+  goemetry_quat.x=double(current_orientation.x());
+  goemetry_quat.y=double(current_orientation.y());
+  goemetry_quat.z=double(current_orientation.z());
+  goemetry_quat.w=double(current_orientation.w());
+  tf2::Quaternion quat_tf;
+
+  tf2::convert(goemetry_quat, quat_tf);
+  double roll, pitch, yaw;
+  
+  tf2::Matrix3x3 matrix(quat_tf);
+  matrix.getRPY(roll, pitch, yaw);
+  const double heading_cmd = yaw;
   autopilot_helper_.sendPoseCommand(position_cmd, heading_cmd);
+}
+
+void FlightmareWrapper::set_heading (const std_msgs::Float32 &msg){
+  Eigen::Vector3d current_pos;
+  Vector<3> position = quad_ptr_ -> getPosition();
+  current_pos[0]=position[0];
+  current_pos[1]=position[1];
+  current_pos[2]=position[2];
+  const double heading_cmd=msg.data/180*M_PI;
+  autopilot_helper_.sendPoseCommand(current_pos, heading_cmd);
+
 }
 
 void FlightmareWrapper::land (const std_msgs::String &msg){ //land the drone
