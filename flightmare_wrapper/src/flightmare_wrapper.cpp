@@ -3,7 +3,7 @@
 FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh),
-    scene_id_(UnityScene::INDUSTRIAL_CUSTOM),
+    scene_id_(UnityScene::INDUSTRIAL),
     unity_ready_(false),
     unity_render_(false),
     receive_id_(0),
@@ -193,10 +193,6 @@ bool FlightmareWrapper::loadParams(void) {
 void FlightmareWrapper::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
   autopilot_helper_.sendStart();
   ROS_INFO("Start");
-<<<<<<< HEAD
-  
-=======
->>>>>>> 6362ef089a5adba634466104a011ea9153deb8c5
 }
 
 void FlightmareWrapper::takeoff (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
