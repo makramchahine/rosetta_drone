@@ -38,27 +38,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -Wall -g")
 
 #pilot
 
-cs_add_library(flight_pilot_custom
-    src/flight_pilot_custom.cpp
-)
 
-target_link_libraries(flight_pilot_custom
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
-  stdc++fs
-)
-
-cs_add_executable(flight_pilot_node_custom
-   src/flight_pilot_node_custom.cpp
-)
-
-target_link_libraries(flight_pilot_node_custom
-  flight_pilot_custom
-  ${OpenCV_LIBRARIES}
-  stdc++fs
-  zmq
-  zmqpp
-)
 
 # Finish
 cs_install()
