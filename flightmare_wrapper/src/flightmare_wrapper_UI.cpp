@@ -7,6 +7,7 @@
 UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh) {
+
   start_pub_ = nh_.advertise<std_msgs::String>("/hummingbird/start", 1000);
   takeoff_pub_ = nh_.advertise<std_msgs::String>("/hummingbird/takeoff", 1000);
   pos_pub_ =  nh_.advertise<geometry_msgs::Point>("/hummingbird/pos", 1000);
@@ -25,34 +26,37 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
 void UI::selection(){
 
   std::cout
-      << "| Available commands:               |"
+      << "| Available commands:               "
       << std::endl;
   std::cout
-      << "| [a] Start                         |"
+      << "| [a] Start                         "
       << std::endl;
   std::cout
-      << "| [b] Takeoff                         |"
+      << "| [b] Takeoff                      "
       << std::endl;      
   std::cout
-      << "| [c] Go To Position              |"
+      << "| [c] Go To Position              "
+      << std::endl;
+  std::cout
+      << "| [d] Set Heading              "
+      << std::endl;    
+  std::cout 
+  	  << "| [e] Land 			"
       << std::endl;
   std::cout 
-  	  << "| [d] Land 			|"
+  	  << "| [f] Off 			"
       << std::endl;
   std::cout 
-  	  << "| [e] Off 			|"
+      << "| [g] Rotate Camera       "
       << std::endl;
   std::cout 
-      << "| [f] Rotate Camera       |"
-      << std::endl;
-  std::cout 
-      << "| [g] Take Picture       |"
+      << "| [h] Take Picture       "
       << std::endl;  
   std::cout 
-      << "| [h] Set and go to Waypoints       |"
+      << "| [i] Set and go to Waypoints       "
       << std::endl;         
   std::cout 
-      << "| [q] Kill Node         |"
+      << "| [q] Kill Node         "
       << std::endl;
   std::cout << "Please select command: ";
   char inputChar;
@@ -105,6 +109,19 @@ void UI::selection(){
       }
     case 'd':
       {
+        std_msgs::Float32 msg;
+
+        std::cout << "Please insert Heading: ";
+        float heading;
+        std::cin >> heading;
+        msg.data=heading;
+
+        heading_pub_.publish(msg);
+        ROS_INFO("Published");
+        break;
+      }      
+    case 'e':
+      {
         std_msgs::String msg;
         std::stringstream ss;
         ss << "hi";
@@ -113,7 +130,7 @@ void UI::selection(){
         ROS_INFO("Published");
         break;
       }
-    case 'e':
+    case 'f':
       {
         std_msgs::String msg;
         std::stringstream ss;
@@ -123,7 +140,7 @@ void UI::selection(){
         ROS_INFO("Published");
         break;
       }
-    case 'f':
+    case 'g':
       {
         geometry_msgs::Quaternion msg;
 
@@ -164,7 +181,7 @@ void UI::selection(){
         ROS_INFO("Published");
         break;
       }       
-    case 'g':
+    case 'h':
       {
         std_msgs::String msg;
         std::stringstream ss;
@@ -174,7 +191,7 @@ void UI::selection(){
         ROS_INFO("Published");
         break;        
       }           
-    case 'h':
+    case 'i':
       {
     //     nav_msgs::Path path;
     //     geometry_msgs::PoseStamped pose;

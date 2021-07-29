@@ -48,6 +48,10 @@
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include "tf/transform_datatypes.h"
+#include "tf2/LinearMath/Matrix3x3.h"
+#include <Eigen/Geometry>
+#include <tf2_eigen/tf2_eigen.h>
 
 using namespace flightlib;
 
@@ -58,10 +62,10 @@ class FlightmareWrapper {
   FlightmareWrapper()
       : FlightmareWrapper(ros::NodeHandle(), ros::NodeHandle("~")) {}
 
-  void set_value(int x); //based off input from the publisher/user, will send to correct function within masterplan class
   void starter(const std_msgs::String &msg);
   void takeoff(const std_msgs::String &msg);
   void go_to_pos(const geometry_msgs::Point::ConstPtr &msg); //idk exactly how i want to execute a go to position function yet with user input
+  void set_heading(const std_msgs::Float32 &msg);
   void land(const std_msgs::String &msg); 
   void off(const std_msgs::String &msg); 
   void camera_pos(const geometry_msgs::Quaternion &msg); 
@@ -91,6 +95,7 @@ class FlightmareWrapper {
   ros::Subscriber start_sub_;
   ros::Subscriber takeoff_sub_;
   ros::Subscriber pos_sub_;
+  ros::Subscriber heading_sub_;
   ros::Subscriber land_sub_;
   ros::Subscriber off_sub_;
   ros::Subscriber camera_pos_sub_;
