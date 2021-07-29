@@ -1,7 +1,7 @@
 <launch>
     <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find dji_wrapper)/urdf/m300.xacro'"/>
 
+    <node pkg="dji_wrapper" name="transform_publisher_node" type="transform_publisher_node.py" output="screen" /> 
 
-
-    <node name="rviz" pkg="rviz" type="rviz"/>
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find dji_wrapper)/launch/m300.rviz"/>
 </launch>
