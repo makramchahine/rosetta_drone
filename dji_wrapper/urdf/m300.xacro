@@ -2,39 +2,61 @@
 
 <robot name="DJI M300" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+  <xacro:property name="use_mesh_file" value="true" />
+  <xacro:property name="mesh_file" value="package://rotors_description/meshes/hummingbird.dae" />
+
   <material name="gray">
-    <color rgba=".7 .7 .7 1"/>
+    <color rgba="0.7 0.7 0.7 1"/>
+  </material>
+
+  <material name="dark_gray">
+    <color rgba="0.1 0.1 0.1 1"/>
   </material>
 
   <material name="red">
     <color rgba="1 0 0 .5"/>
   </material>
 
-  <link name="drone">
+  <link name="base_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <box size=".9 .9 .3"/>
+        <xacro:if value="${use_mesh_file}">
+            <mesh filename="${mesh_file}" scale="2 2 2" />
+          </xacro:if>
+          <xacro:unless value="${use_mesh_file}">
+            <box size="0.9 0.9 0.3"/>
+          </xacro:unless>
       </geometry>
       <material name="red"/>
     </visual>
   </link>
 
+  <joint name="drone to gimbal" type="fixed">
+    <parent link="base_link"/>
+    <child link="gimbal"/>
+    <origin xyz="0 0 0"/>
+  </joint>
+
   <link name="gimbal">
     <visual>
       <geometry>
-        <box size="0.06 0.12 0.06"/>
+        <box size="0.12 0.06 0.06"/>
       </geometry>
       <origin xyz="0 0 0"/>
       <material name="gray"/>
     </visual>
+
+    <visual>
+      <geometry>
+        <cylinder length="0.02" radius="0.015"/>
+      </geometry>
+      <origin xyz=".06 0 0" rpy="0 1.57075 0"/>
+      <material name="dark_gray"/>
+    </visual>
   </link>
 
-  <joint name="drone to gimbal" type="fixed">
-    <parent link="drone"/>
-    <child link="gimbal"/>
-    <origin xyz="0 .24 -.52"/>
-  </joint>
+  
 
 
 </robot>
