@@ -53,6 +53,10 @@ target_link_libraries(dji_wrapper_node
 
 )
 
+catkin_install_python(PROGRAMS scripts/transform_publisher_node.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 # Finish
 cs_install()
 cs_export()

@@ -1,0 +1,7 @@
+<launch>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find dji_wrapper)/urdf/m300.xacro'"/>
+
+
+
+    <node name="rviz" pkg="rviz" type="rviz"/>
+</launch>

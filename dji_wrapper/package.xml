@@ -95,6 +95,10 @@
   <exec_depend>message_filters</exec_depend>
 
   <depend>dji_osdk_ros</depend>
+
+  <depend>urdf</depend>
+
+  <depend>rotors_description</depend>
   
 
   <!-- The export tag contains other, unspecified, tags -->

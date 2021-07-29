@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+
+<robot name="DJI M300" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <material name="gray">
+    <color rgba=".7 .7 .7 1"/>
+  </material>
+
+  <material name="red">
+    <color rgba="1 0 0 .5"/>
+  </material>
+
+  <link name="drone">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size=".9 .9 .3"/>
+      </geometry>
+      <material name="red"/>
+    </visual>
+  </link>
+
+  <link name="gimbal">
+    <visual>
+      <geometry>
+        <box size="0.06 0.12 0.06"/>
+      </geometry>
+      <origin xyz="0 0 0"/>
+      <material name="gray"/>
+    </visual>
+  </link>
+
+  <joint name="drone to gimbal" type="fixed">
+    <parent link="drone"/>
+    <child link="gimbal"/>
+    <origin xyz="0 .24 -.52"/>
+  </joint>
+
+
+</robot>
