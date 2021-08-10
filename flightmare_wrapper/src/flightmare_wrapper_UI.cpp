@@ -4,6 +4,8 @@
 #include "flightmare_wrapper/flightmare_wrapper_UI.hpp"
 
 
+
+
 UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh) {
@@ -11,17 +13,21 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   start_pub_ = nh_.advertise<std_msgs::String>("/hummingbird/start", 1000);
   takeoff_pub_ = nh_.advertise<std_msgs::String>("/hummingbird/takeoff", 1000);
   pos_pub_ =  nh_.advertise<geometry_msgs::Point>("/hummingbird/pos", 1000);
+  heading_pub_ = nh_.advertise<std_msgs::Float32>("/hummingbird/heading",1000);
   land_pub_  = nh_.advertise<std_msgs::String>("/hummingbird/land", 1000);
   off_pub_  = nh_.advertise<std_msgs::String>("/hummingbird/off", 1000);
   camera_pos_pub_ = nh_.advertise<geometry_msgs::Quaternion>("/hummingbird/camera_pos", 1000);
   take_pic_pub_ = nh_.advertise<std_msgs::String>("/hummingbird/take_pic", 1000);
   set_waypoints_pub_ = nh_.advertise<nav_msgs::Path>("/hummingbird/set_waypoints",1000);
+  set_home_pub_= nh_.advertise<std_msgs::String>("/hummingbird/set_home", 1000);
   while(ros::ok()){
     selection();
     ros::spinOnce();
   }
   
 }
+
+
 
 void UI::selection(){
 
@@ -54,7 +60,10 @@ void UI::selection(){
       << std::endl;  
   std::cout 
       << "| [i] Set and go to Waypoints       "
-      << std::endl;         
+      << std::endl;   
+  std::cout 
+      << "| [j] Set Current Position as Home       "
+      << std::endl;            
   std::cout 
       << "| [q] Kill Node         "
       << std::endl;
@@ -254,7 +263,17 @@ void UI::selection(){
 
     //     break;
     //   }
-     }                     
+     } 
+    case 'j':
+      {
+        std_msgs::String msg;
+        std::stringstream ss;
+        ss << "hi";
+        msg.data = ss.str();
+        set_home_pub_.publish(msg);
+        ROS_INFO("Published");
+        break;         
+      }                         
     case 'q':
       {
         ros::shutdown();

@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.0.0)
 
 find_package(catkin_simple REQUIRED)
 
+
 catkin_simple()
 
 # Setup Default Build Type as Release

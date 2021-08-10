@@ -1,0 +1,100 @@
+<?xml version="1.0" ?>
+
+<robot name="DJI Controller" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <material name="gray">
+    <color rgba=".5 .5 .5 1"/>
+  </material>
+
+  <material name="dark_gray">
+    <color rgba=".2 .2 .2 1"/>
+  </material>
+
+  <material name="red">
+    <color rgba="1 0 0 .5"/>
+  </material>
+
+  <material name="green">
+    <color rgba="0 1 0 .5"/>
+  </material>
+
+  <link name="controller">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size=".5 .5 .1"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+  </link>
+
+  <link name="dot_1">
+    <visual>
+      <origin rpy="0 0 0" xyz="-.15 0 -.1"/>
+      <geometry>
+        <cylinder radius=".05" length="0.01"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
+  </link>
+
+    <link name="dot_2">
+    <visual>
+      <origin rpy="0 0 0" xyz=".15 0 -.1"/>
+      <geometry>
+        <cylinder radius=".05" length="0.01"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
+  </link>
+
+  <link name="joystick_1">
+    <visual>
+      <origin rpy="0 0 0" xyz="-.15 0 -.1"/>
+      <geometry>
+        <cylinder radius=".05" length="0.1"/>
+      </geometry>
+      <material name="green"/>
+    </visual>
+  </link>
+
+    <link name="joystick_2">
+    <visual>
+      <origin rpy="0 0 0" xyz=".15 0 -.1"/>
+      <geometry>
+        <cylinder radius=".05" length="0.1"/>
+      </geometry>
+      <material name="red"/>
+    </visual>
+  </link>
+
+  <joint name="joystick_1_to_controller" type="floating">
+    <parent link="controller"/>
+    <child link="joystick_1"/>
+    <origin xyz="-.15 0 -.1"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+
+  <joint name="joystick_2_to_controller" type="floating">
+    <parent link="controller"/>
+    <child link="joystick_2"/>
+    <origin xyz=".15 0 -.1"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+
+  <joint name="dot_1_to_controller" type="fixed">
+    <parent link="controller"/>
+    <child link="dot_1"/>
+    <origin xyz="-.15 0 -.1"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+
+  <joint name="dot_2_to_controller" type="fixed">
+    <parent link="controller"/>
+    <child link="dot_2"/>
+    <origin xyz=".15 0 -.1"/>
+    <axis xyz="0 0 0"/>
+  </joint>
+
+
+</robot>

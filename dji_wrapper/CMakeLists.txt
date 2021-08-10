@@ -57,6 +57,10 @@ catkin_install_python(PROGRAMS scripts/transform_publisher_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+catkin_install_python(PROGRAMS scripts/controller_publisher_node.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 # Finish
 cs_install()
 cs_export()
