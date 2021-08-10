@@ -40,7 +40,7 @@ class TransformPublisher():
         self.current_position_z = 0
 
         self.orientation_mutex = True
-        self.current_orientation_w = 0
+        self.current_orientation_w = 1
         self.current_orientation_x = 0
         self.current_orientation_y = 0
         self.current_orientation_z = 0
@@ -132,8 +132,8 @@ class TransformPublisher():
         t1 = geometry_msgs.msg.TransformStamped()
 
         t1.header.stamp = rospy.Time.now()
-        t1.header.frame_id = "map_parent"
-        t1.child_frame_id = "drone"
+        t1.header.frame_id = "world"
+        t1.child_frame_id = "base_link"
         t1.transform.translation.x = self.current_position_x
         t1.transform.translation.y = self.current_position_y
         t1.transform.translation.z = self.current_position_z
@@ -149,11 +149,11 @@ class TransformPublisher():
         t2 = geometry_msgs.msg.TransformStamped()
 
         t2.header.stamp = rospy.Time.now()
-        t2.header.frame_id = "drone"
+        t2.header.frame_id = "base_link"
         t2.child_frame_id = "gimbal"
-        t2.transform.translation.x = 0
+        t2.transform.translation.x = 0.24
         t2.transform.translation.y = 0
-        t2.transform.translation.z = 0
+        t2.transform.translation.z = -.37
 
         #wants radians
         q = quaternion_from_euler(self.gimbal_roll, self.gimbal_pitch, self.gimbal_yaw)

@@ -1,12 +1,13 @@
-project(custom_control)
+project(rosbagg)
 
 cmake_minimum_required(VERSION 3.0.0)
 
 find_package(catkin_simple REQUIRED)
 
-find_package(OpenCV REQUIRED)
 
 option(BUILD_MP "Build Motion Planning" OFF)
+
+
 
 catkin_simple()
 
@@ -36,13 +37,27 @@ add_compile_options(-O3)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_ARCH_FLAGS} -Wall -DNDEBUG -fPIC")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -Wall -g")
 
-#pilot
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 322bfb837f721643cff092e0589f24025971bbc5
+cs_add_executable(bagstart
+   src/bagstart.cpp
+)
 
+target_link_libraries(bagstart
+  ${catkin_LIBRARIES}
+  stdc++fs
+  dji_osdk_ros
+)
+
+cs_add_executable(bagend
+   src/bagend.cpp
+)
+
+target_link_libraries(bagend
+  ${catkin_LIBRARIES}
+  stdc++fs
+  dji_osdk_ros
+)
 # Finish
 cs_install()
 cs_export()

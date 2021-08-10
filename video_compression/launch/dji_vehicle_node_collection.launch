@@ -1,0 +1,4 @@
+<launch>
+    <include file="$(find dji_osdk_ros)/launch/dji_vehicle_node.launch" />
+    <include file="$(find video_compression)/launch/video_compression_node.launch" />
+</launch>
