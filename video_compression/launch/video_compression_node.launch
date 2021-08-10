@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="video_compression" type="ffio_example.py" name="video_compression_node" output="screen">
+    </node>
+</launch>

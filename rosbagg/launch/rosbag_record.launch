@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="rosbagg" type="bagstart" name="bagstart" output="screen" />
+    <node pkg="rosbagg" type="bagend" name="bagend" output="screen" />
+</launch>
