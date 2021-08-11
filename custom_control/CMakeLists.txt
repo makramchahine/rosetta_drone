@@ -38,10 +38,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -Wall -g")
 
 #pilot
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 322bfb837f721643cff092e0589f24025971bbc5
 
 # Finish
 cs_install()
