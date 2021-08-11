@@ -24,6 +24,7 @@
 
 #include <sstream>
 
+
 class UI {
  public:
   UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
@@ -54,6 +55,8 @@ class UI {
   ros::Publisher camera_pos_pub_;
   ros::Publisher take_pic_pub_;
   ros::Publisher set_waypoints_pub_;
+  ros::Publisher set_home_pub_;
+
 
   bool executing_trajectory_;
 

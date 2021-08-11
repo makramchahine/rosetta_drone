@@ -99,8 +99,6 @@ FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeH
 }
 
 void FlightmareWrapper::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
-  //Quaternion current_orientation = quad_state_.q();
-
   quad_state_.x[QS::POSX] = (Scalar)msg->pose.pose.position.x;
   quad_state_.x[QS::POSY] = (Scalar)msg->pose.pose.position.y;
   quad_state_.x[QS::POSZ] = (Scalar)msg->pose.pose.position.z;
@@ -281,7 +279,7 @@ void FlightmareWrapper::take_pic(const std_msgs::String &msg){
 }
 
 void FlightmareWrapper::set_waypoints(const nav_msgs::Path &msg){
- // This is stuff from integration_test, please clean up and use what you need
+// This is stuff from integration_test, please clean up and use what you need
 //   std::vector<Eigen::Vector3d> way_points ;
 
    

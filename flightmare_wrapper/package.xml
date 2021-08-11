@@ -82,7 +82,7 @@
   <depend>cv_bridge</depend>
   <depend>mav_msgs</depend>
   <depend>LinearMath</depend>
-
+ <depend>dji_osdk_ros</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

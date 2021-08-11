@@ -60,10 +60,18 @@ class DJIWrapper {
   void starter(const std_msgs::String &msg);
   void takeoff(const std_msgs::String &msg);
   void go_to_pos(const geometry_msgs::Point::ConstPtr &msg); //idk exactly how i want to execute a go to position function yet with user input
+  void set_heading(const std_msgs::Float32 &msg);
   void land(const std_msgs::String &msg); 
   void off(const std_msgs::String &msg); 
   void camera_pos(const geometry_msgs::Quaternion::ConstPtr &msg); 
   void take_pic(const std_msgs::String &msg);
+  void set_home(const std_msgs::String &msg);
+
+  void localFrameRefSubCallback(const sensor_msgs::NavSatFix::ConstPtr& localFrameRef);
+  void timeSyncNmeaSubSCallback(const nmea_msgs::Sentence::ConstPtr& timeSyncNmeaMsg);
+  void timeSyncGpsUtcSubCallback(const dji_osdk_ros::GPSUTC::ConstPtr& timeSyncGpsUtc);
+  void timeSyncFcUtcSubCallback(const dji_osdk_ros::FCTimeInUTC::ConstPtr& timeSyncFcUtc);
+  void timeSyncPpsSourceSubCallback(const std_msgs::String::ConstPtr& timeSyncPpsSource);
 
  private:
   ros::NodeHandle nh_;
@@ -78,19 +86,25 @@ class DJIWrapper {
   ros::Subscriber start_sub_;
   ros::Subscriber takeoff_sub_;
   ros::Subscriber pos_sub_;
+  ros::Subscriber heading_sub_;
   ros::Subscriber land_sub_;
   ros::Subscriber off_sub_;
   ros::Subscriber camera_pos_sub_;
   ros::Subscriber take_pic_sub_;
+  ros::Subscriber set_home_sub_;
 
-  // bool executing_trajectory_;
 
-  // // Performance metrics variables
-  // double sum_position_error_squared_;
-  // double max_position_error_;
-  // double sum_thrust_direction_error_squared_;
-  // double max_thrust_direction_error_;
-  // char input; //will be relevant to go to position function
+  ros::Subscriber localFrameRefSub;
+  ros::Subscriber timeSyncNmeaSub;
+  ros::Subscriber timeSyncGpsUtcSub;
+  ros::Subscriber timeSyncFcUtcSub;
+  ros::Subscriber timeSyncPpsSourceSub;
+
+  sensor_msgs::NavSatFix local_Frame_ref_;
+  nmea_msgs::Sentence time_sync_nmea_msg_;
+  dji_osdk_ros::GPSUTC time_sync_gps_utc_;
+  std_msgs::String time_sync_pps_source_;
+  dji_osdk_ros::FCTimeInUTC time_sync_fc_utc_;
 
   //for gimbal control
   ros::ServiceClient gimbal_control_client;

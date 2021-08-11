@@ -39,7 +39,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -Wall -g")
 #pilot
 
 
-
 # Finish
 cs_install()
 cs_export()
