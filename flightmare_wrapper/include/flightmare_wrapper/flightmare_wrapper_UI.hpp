@@ -11,15 +11,17 @@
 
 #include <autopilot/autopilot_helper.h>
 #include <quadrotor_msgs/AutopilotFeedback.h>
-#include "geometry_msgs/Quaternion.h"
 #include <tf2/LinearMath/Quaternion.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+#include "geometry_msgs/Quaternion.h"
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include "ros/ros.h"
 #include "std_msgs/Float32.h"
 #include "std_msgs/String.h"
 #include "nav_msgs/Path.h"
+#include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
+#include "std_msgs/Header.h"
 #include <math.h>
 
 #include <sstream>
@@ -33,6 +35,12 @@ class UI {
       : UI(ros::NodeHandle(), ros::NodeHandle("~")) {}
 
   void selection();
+
+  tf2::Quaternion yawToQuaternion(float yaw);
+
+  geometry_msgs::PoseStamped getPoseMessage(float x, float y, float z, float yaw);
+
+  nav_msgs::Path getSqaurePath(float length);
 
  private:
   ros::NodeHandle nh_;
@@ -56,6 +64,7 @@ class UI {
   ros::Publisher take_pic_pub_;
   ros::Publisher set_waypoints_pub_;
   ros::Publisher set_home_pub_;
+  ros::Publisher path_pub_;
 
 
   bool executing_trajectory_;

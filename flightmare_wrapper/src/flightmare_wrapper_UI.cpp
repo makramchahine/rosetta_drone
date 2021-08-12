@@ -20,6 +20,7 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   take_pic_pub_ = nh_.advertise<std_msgs::String>("/hummingbird/take_pic", 1000);
   set_waypoints_pub_ = nh_.advertise<nav_msgs::Path>("/hummingbird/set_waypoints",1000);
   set_home_pub_= nh_.advertise<std_msgs::String>("/hummingbird/set_home", 1000);
+  path_pub_= nh_.advertise<nav_msgs::Path>("/path", 1000);
   while(ros::ok()){
     selection();
     ros::spinOnce();
@@ -27,7 +28,44 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   
 }
 
+tf2::Quaternion UI::yawToQuaternion(float yaw){
+  tf2::Quaternion myQuaternion;
+  myQuaternion.setRPY(0,0,(yaw*M_PI/180));
+  myQuaternion.normalize();
+  return myQuaternion;
+}
 
+geometry_msgs::PoseStamped UI::getPoseMessage(float x, float y, float z, float yaw){
+  geometry_msgs::PoseStamped poseStamped;
+  tf2::Quaternion orientation = yawToQuaternion(yaw);
+  geometry_msgs::Quaternion quat_msg = tf2::toMsg(orientation);
+  geometry_msgs::Point position_msg;
+  position_msg.x=x;
+  position_msg.y=y;
+  position_msg.z=z;
+  geometry_msgs::Pose pose_msg;
+  pose_msg.position = position_msg;
+  pose_msg.orientation = quat_msg;
+  std_msgs::Header header_msg;
+  header_msg.stamp = ros::Time::now();
+  header_msg.frame_id = ""; //this is temporary, we dont have a heirarchy
+  poseStamped.header = header_msg;
+  poseStamped.pose = pose_msg;
+  return poseStamped;
+}
+
+nav_msgs::Path UI::getSqaurePath(float length){
+  nav_msgs::Path square;
+  std_msgs::Header header_msg;
+  header_msg.stamp = ros::Time::now();
+  header_msg.frame_id = ""; //this is temporary, we dont have a heirarchy
+  square.header = header_msg;
+  square.poses.push_back(getPoseMessage(length, 0, 0, 0));
+  square.poses.push_back(getPoseMessage(0, length, 0, 0));
+  square.poses.push_back(getPoseMessage(-length, 0, 0, 0));
+  square.poses.push_back(getPoseMessage(0, -length, 0, 0));
+  return square;
+}
 
 void UI::selection(){
 
@@ -63,7 +101,11 @@ void UI::selection(){
       << std::endl;   
   std::cout 
       << "| [j] Set Current Position as Home       "
-      << std::endl;            
+      << std::endl;      
+  std::cout 
+      << "| [k] Square       "
+      << std::endl;          
+
   std::cout 
       << "| [q] Kill Node         "
       << std::endl;
@@ -273,7 +315,18 @@ void UI::selection(){
         set_home_pub_.publish(msg);
         ROS_INFO("Published");
         break;         
-      }                         
+      }   
+    case 'k':
+      { 
+        std::cout << "Please insert side length of the sqaure: ";
+        float length;
+        std::cin >> length;
+
+        nav_msgs::Path path = getSqaurePath(length);
+        path_pub_.publish(path);
+        ROS_INFO("Published");
+        break;         
+      }                              
     case 'q':
       {
         ros::shutdown();
