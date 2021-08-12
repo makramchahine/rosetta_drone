@@ -23,4 +23,4 @@ echo "Setup Camera Stream"
 echo "Set Local Position Reference" 
 #Storing Topics in ROS Bag
 cd /home/dji/flash
-/opt/ros/kinetic/bin/rosbag record --split --duration=1m -o subset $bag __name:=bagger
+/opt/ros/kinetic/bin/rosbag record -o subset $bag __name:=bagger
