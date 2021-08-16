@@ -17,6 +17,8 @@ import std_msgs.msg
 
 import os
 
+from logger_example import Logger
+
 class VideoCompressionNode():
 
     def __init__(self): 
@@ -55,6 +57,7 @@ class VideoCompressionNode():
         rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb)
         rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb)
 
+        self.logger = Logger()
         #start camera stream
         rospy.wait_for_service('/setup_camera_stream')
         try:
@@ -65,6 +68,7 @@ class VideoCompressionNode():
             print("camera start result:",resp1)
         except rospy.ServiceException as e:
             print("Service call failed: %s"%e)
+
 
         print("spinning")
 
@@ -88,6 +92,8 @@ class VideoCompressionNode():
             resp2 = gimbalctrl(h, True, 0,  0, 0.0,  0.0, 0.0, 0)
 
             print("starting recording")
+
+
             
             subprocess.Popen(["sh","/home/dji/catkin_ws/src/rosbagg/src/bagstart.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -95,6 +101,7 @@ class VideoCompressionNode():
             time = rostime.secs + rostime.nsecs * 1e-9
             self.video_start_time = time
 
+            self.logger.open_writer(os.path.join(self.path, "%.2f.csv" % time))
 
             if not self.image_mode:
                 self.video_times = []
@@ -115,6 +122,8 @@ class VideoCompressionNode():
                         fo.write('%f,%d,%d\n' % (t.secs+t.nsecs*1e-9, t.secs, t.nsecs))
                 print("frame times written")
             
+            self.logger.close_writer()
+
             subprocess.Popen(["sh","/home/dji/catkin_ws/src/rosbagg/src/bagend.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             self.video_open = False
@@ -126,6 +135,7 @@ class VideoCompressionNode():
 
             #print("image callback",msg.height, msg.width)
             rostime = msg.header.stamp#rospy.Time.now()
+
             t0 = TimerTime.time()
             im = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
             im = im[::2, ::2, :]
@@ -144,6 +154,10 @@ class VideoCompressionNode():
                 self.writer.write(im)
                 print('writing took %f seconds\n' % (TimerTime.time() - t0))
                 self.video_times.append(rostime)
+
+            print(1)
+            self.logger.write_state(rostime)
+            print(2)
 
     # T -8000 (left)
     # P 8000  (center)
