@@ -15,14 +15,26 @@ import math
 
 
 class TransformPublisher():
+    """
+    Publishes the drone and gimbal coordinate frames for use in rviz based on dji topics
+
+    It caches gps location, drone attitude, and gimbal angle and publishes their transforms on a loop with a fixed interval
+    """
 
     def __init__(self):
+        self.use_gps = False
+
         self.drone_br = tf2_ros.TransformBroadcaster()
         self.gimbal_br = tf2_ros.TransformBroadcaster()
 
-        rospy.Subscriber('/dji_osdk_ros/gps_position',
-                     sensor_msgs.msg.NavSatFix,
-                     self.handle_gps_position)
+        if self.use_gps:
+            rospy.Subscriber('/dji_osdk_ros/gps_position',
+                         sensor_msgs.msg.NavSatFix,
+                         self.handle_gps_position)
+        else:
+            rospy.Subscriber('/dji_osdk_ros/local_position',
+                         geometry_msgs.msg.PointStamped,
+                         self.handle_local_position)
 
         rospy.Subscriber('/dji_osdk_ros/attitude',
                      geometry_msgs.msg.QuaternionStamped,
@@ -33,6 +45,8 @@ class TransformPublisher():
                      self.handle_gimbal_angle)
 
         #self.timer = rospy.Timer(rospy.Duration(.1), self.publish_pose)
+
+
 
         self.position_mutex = True
         self.current_position_x = 0
@@ -50,9 +64,9 @@ class TransformPublisher():
         self.gimbal_pitch = 0
         self.gimbal_yaw = 0
 
+        # deprecated - now we use local_position instead of gps
         self.origin_lat =  42.5215478236
         self.origin_lon = -71.6066135646
-
         self.origin_altitude = 109
 
 
@@ -89,9 +103,17 @@ class TransformPublisher():
 
         #print("gps handled!")
 
+    def handle_local_position(self, msg):
+        while(not self.position_mutex):
+            pass 
 
+        self.position_mutex = False
 
+        self.current_position_x = msg.point.x
+        self.current_position_y = msg.point.y
+        self.current_position_z = msg.point.z
 
+        self.position_mutex = True
 
 
     def handle_attitude(self, msg):
