@@ -6,6 +6,7 @@ import cv2
 
 import time
 
+# this reads out some frames from the mp4 to show it's possible
 
 reader = ffio.FFReader('out.mp4')
 

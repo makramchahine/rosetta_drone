@@ -4,12 +4,20 @@ from sensor_msgs.msg import BatteryState, NavSatFix, Imu, Joy
 from geometry_msgs.msg import Vector3Stamped, QuaternionStamped, PointStamped
 from dji_osdk_ros.msg import VOPosition
 
-print("hello")
+
 
 class Logger:
+    """Logs data from ros topics in a csv stored by frame time instead of a rosbag
+    which means you dont have to synchronize data afterwards
+
+    Usage: Make a logger within your node, call open_writer() to initialize the writer, each frame call write_state(),
+    and when you're done with the run call close_writer()
+
+    """
 
 
     def write_state(self, time_msg):
+        """Takes in the ros timestamp to associate with the line and writes the currently cached data to the csv"""
         #time_msg = rospy.Time.now()
         time_total = time_msg.secs + time_msg.nsecs*1e-9
         time_secs = time_msg.secs
@@ -81,23 +89,21 @@ class Logger:
         csv_row = self.fmt % (time_total, time_secs, time_nsecs, battery_voltage,battery_current,battery_percentage, acc_x,acc_y,acc_z,ang_vel_x,ang_vel_y,ang_vel_z,att_x,att_y,att_z,att_w,gps_health,lat,lng,gps_alt,height_above_takeoff,local_x,local_y,local_z,rc0,rc1,rc2,rc3,rc4,rc5,vx,vy,vz,gimbal_x,gimbal_y,gimbal_z)
 
         self.write_file.write(csv_row)
-        print("wrote")
 
 
     def open_writer(self, filepath):
+        """Opens the file to begin writing"""
         self.write_file = open(filepath, "w")
         print('opened writer')
         self.write_file.write(self.header + "\n")
-        print("wrote header")
 
     def close_writer(self):
+        """closes the writer cleanly"""
         self.write_file.close()
         self.write_file = None
         print('closed writer')
 
     def __init__(self):
-
-        print('initing')
 
         rospy.Subscriber('/dji_osdk_ros/battery_state', BatteryState, self.battery_state_cb)
         rospy.Subscriber('/dji_osdk_ros/acceleration_ground_fused', Vector3Stamped, self.acc_ground_fused_cb)
