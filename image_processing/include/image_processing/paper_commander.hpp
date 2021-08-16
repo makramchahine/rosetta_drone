@@ -5,7 +5,12 @@
 
 using namespace std;
 
-
+/**
+* Uses the topics published by PaperFinder to print to the console whether to move closer or farther away from the paper
+* It also applies some smoothing to the area signal to make for more consistent directions
+*
+* @see         PaperFinder
+*/
 class PaperCommander {
  public:
   PaperCommander(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
