@@ -74,6 +74,7 @@
   <depend>image_transport</depend>
   <depend>cv_bridge</depend>
   <depend>mav_msgs</depend>
+  <depend>LinearMath</depend>
 
 
   <build_depend>rospy</build_depend>

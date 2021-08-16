@@ -21,10 +21,17 @@
 #include <sensor_msgs/Joy.h>
 #include <dji_telemetry.hpp>
 
+
+#include<dji_osdk_ros/SetJoystickMode.h>
+#include<dji_osdk_ros/JoystickAction.h>
+
 #include "std_msgs/Float32.h"
 #include "std_msgs/String.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Quaternion.h"
+#include "nav_msgs/Path.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "std_msgs/Header.h"
 
 #include <sstream>
 
@@ -42,10 +49,14 @@
 #include <dji_osdk_ros/CameraStopShootPhoto.h>
 #include <dji_osdk_ros/CameraRecordVideoAction.h>
 
-#include "tf/transform_datatypes.h"
-#include "tf/LinearMath/Matrix3x3.h"
-
 #include "dji_version.hpp"
+
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include "tf/transform_datatypes.h"
+#include "tf2/LinearMath/Matrix3x3.h"
+#include <Eigen/Geometry>
+#include <tf2_eigen/tf2_eigen.h>
 
 
 using namespace dji_osdk_ros;
@@ -66,12 +77,17 @@ class DJIWrapper {
   void camera_pos(const geometry_msgs::Quaternion::ConstPtr &msg); 
   void take_pic(const std_msgs::String &msg);
   void set_home(const std_msgs::String &msg);
+  void follow_path(const nav_msgs::Path &msg);
 
   void localFrameRefSubCallback(const sensor_msgs::NavSatFix::ConstPtr& localFrameRef);
   void timeSyncNmeaSubSCallback(const nmea_msgs::Sentence::ConstPtr& timeSyncNmeaMsg);
   void timeSyncGpsUtcSubCallback(const dji_osdk_ros::GPSUTC::ConstPtr& timeSyncGpsUtc);
   void timeSyncFcUtcSubCallback(const dji_osdk_ros::FCTimeInUTC::ConstPtr& timeSyncFcUtc);
   void timeSyncPpsSourceSubCallback(const std_msgs::String::ConstPtr& timeSyncPpsSource);
+  bool moveByPosOffset(const JoystickCommand &offsetDesired,
+                     float posThresholdInM,
+                     float yawThresholdInDeg);
+  double quaternionToYaw(const geometry_msgs::Quaternion &msg);
 
  private:
   ros::NodeHandle nh_;
@@ -92,6 +108,8 @@ class DJIWrapper {
   ros::Subscriber camera_pos_sub_;
   ros::Subscriber take_pic_sub_;
   ros::Subscriber set_home_sub_;
+  ros::Subscriber path_sub_;
+
 
 
   ros::Subscriber localFrameRefSub;

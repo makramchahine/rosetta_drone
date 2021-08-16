@@ -15,6 +15,8 @@ DJIWrapper::DJIWrapper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   task_control_client = nh_.serviceClient<FlightTaskControl>("/flight_task_control");
   gimbal_control_client = nh_.serviceClient<GimbalAction>("/gimbal_task_control");
   set_home_sub_ = nh_.subscribe("set_home", 1000, &DJIWrapper::set_home, this);
+  path_sub_ = nh_.subscribe("path", 1000, &DJIWrapper::follow_path, this);
+
  
   camera_start_shoot_single_photo_client = nh_.serviceClient<CameraStartShootSinglePhoto>(
       "camera_start_shoot_single_photo");
@@ -44,6 +46,33 @@ void DJIWrapper::timeSyncPpsSourceSubCallback(const std_msgs::String::ConstPtr& 
 {
   time_sync_pps_source_ = *timeSyncPpsSource;
 }
+
+bool DJIWrapper::moveByPosOffset(const JoystickCommand &offsetDesired,
+                     float posThresholdInM,
+                     float yawThresholdInDeg)
+{
+  FlightTaskControl flightTaskControl;
+  flightTaskControl.request.task = FlightTaskControl::Request::TASK_POSITION_AND_YAW_CONTROL;
+  flightTaskControl.request.joystickCommand.x = offsetDesired.x;
+  flightTaskControl.request.joystickCommand.y = offsetDesired.y;
+  flightTaskControl.request.joystickCommand.z = offsetDesired.z;
+  flightTaskControl.request.joystickCommand.yaw = offsetDesired.yaw;
+  flightTaskControl.request.posThresholdInM   = posThresholdInM;
+  flightTaskControl.request.yawThresholdInDeg = yawThresholdInDeg;
+
+  flight_control_client.call(flightTaskControl);
+  return flightTaskControl.response.result;
+}
+
+double DJIWrapper::quaternionToYaw(const geometry_msgs::Quaternion &msg){
+  tf2::Quaternion quat_tf;
+  tf2::convert(msg, quat_tf);
+  double roll, pitch, yaw;
+  tf2::Matrix3x3 matrix(quat_tf);
+  matrix.getRPY(roll, pitch, yaw);
+  return yaw;
+}
+
 void DJIWrapper::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
 	// this will actually make the drone takeoff so only uncomment if you are ready for that
 
@@ -61,57 +90,26 @@ void DJIWrapper::takeoff (const std_msgs::String &msg){
 }
 
 void DJIWrapper::go_to_pos(const geometry_msgs::Point::ConstPtr &msg){
-
-  // FlightTaskControl flightTaskControl;
-  // flightTaskControl.request.task = FlightTaskControl::Request::TASK_POSITION_AND_YAW_CONTROL;
-  // flightTaskControl.request.joystickCommand.x = msg->x;
-  // flightTaskControl.request.joystickCommand.y = msg->y;
-  // flightTaskControl.request.joystickCommand.z = msg->z;
-  // flightTaskControl.request.joystickCommand.yaw = 0;
-  // flightTaskControl.request.posThresholdInM   = .8;
-  // flightTaskControl.request.yawThresholdInDeg = 1;
-
-  // flight_control_client.call(flightTaskControl);
+  moveByPosOffset({msg->x, msg->y, msg->z, 0}, 0.8, 1);
   ROS_INFO("Position control task succesful");
 }
 
 void DJIWrapper::set_heading(const std_msgs::Float32 &msg){
-  // FlightTaskControl flightTaskControl;
-  // flightTaskControl.request.task = FlightTaskControl::Request::TASK_POSITION_AND_YAW_CONTROL;
-  // flightTaskControl.request.joystickCommand.x = 0;
-  // flightTaskControl.request.joystickCommand.y = 0;
-  // flightTaskControl.request.joystickCommand.z = 0;
-  // flightTaskControl.request.joystickCommand.yaw = msg.data;
-  // flightTaskControl.request.posThresholdInM   = .8;
-  // flightTaskControl.request.yawThresholdInDeg = 1;
+  moveByPosOffset({0, 0, 0, msg.data}, 0.8, 1);
 }
 
 void DJIWrapper::land(const std_msgs::String &msg){
 	// //this will actually make the drone land so only uncomment if you are ready for that
-	// control_task.request.task = FlightTaskControl::Request::TASK_LAND;
- //  task_control_client.call(control_task);
+	control_task.request.task = FlightTaskControl::Request::TASK_LAND;
+  task_control_client.call(control_task);
 	ROS_INFO("Land task succesful");
 }
 
 void DJIWrapper::off(const std_msgs::String &msg){
-	//the drone WILL fall out of the sky if you call this mid flight
-	// std::cout <<"Are you sure you want to turn off the motors? Insert 'y' to confirm, or 'n' to cancel: ";
-	// //fill in input stuff
- //  char motors_off;
- //  std::cin >> motors_off;
- //  switch (motors_off)
- //  {
- //    case 'y':
-	//     {
-	// 			control_task.request.task = FlightTaskControl::Request::STOP_MOTOR;
-	// 			task_control_client.call(control_task);
-	// 			ROS_INFO("Drone turned off");
-  //      break;
-	//     }
- //    case 'n':
-	//     {
-	//     	break;
-	//   	}
+	control_task.request.task = FlightTaskControl::Request::STOP_MOTOR;
+	task_control_client.call(control_task);
+	ROS_INFO("Drone turned off");
+ break;
  //  }  
 
 	
@@ -150,7 +148,7 @@ void DJIWrapper::take_pic(const std_msgs::String &msg){
 
 }
 
-void DJIWrapper::set_home(const::std_msgs::String &msg){
+void DJIWrapper::set_home(const std_msgs::String &msg){
   localFrameRefSub     = nh_.subscribe("dji_osdk_ros/local_frame_ref", 10, &DJIWrapper::localFrameRefSubCallback,this);
   timeSyncNmeaSub      = nh_.subscribe("dji_osdk_ros/time_sync_nmea_msg", 10, &DJIWrapper::timeSyncNmeaSubSCallback,this);
   timeSyncGpsUtcSub    = nh_.subscribe("dji_osdk_ros/time_sync_gps_utc", 10, &DJIWrapper::timeSyncGpsUtcSubCallback,this);
@@ -165,5 +163,13 @@ void DJIWrapper::set_home(const::std_msgs::String &msg){
      ROS_INFO("localFrameRef:");
      ROS_INFO("local_Frame_ref_(latitude, longitude, altitude) :%f, %f, %f\n ",
      local_Frame_ref_.latitude, local_Frame_ref_.longitude, local_Frame_ref_.altitude);
+  }
+}
+
+void DJIWrapper::follow_path(const nav_msgs::Path &msg){
+  for (int i=0; i<msg.poses.size(); i++){
+    const geometry_msgs::PoseStamped pose = msg.poses[i];
+    double yaw = quaternionToYaw(pose.pose.orientation);
+    moveByPosOffset({pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw}, 0.8, 1);
   }
 }
