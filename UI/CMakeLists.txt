@@ -33,30 +33,26 @@ add_compile_options(-O3)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_ARCH_FLAGS} -Wall -DNDEBUG -fPIC")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -Wall -g")
 
-cs_add_library(flightmare_wrapper
-    src/flightmare_wrapper.cpp
+cs_add_library(flightmare_wrapper_UI
+    src/flightmare_wrapper_UI.cpp
 )
 
-
-target_link_libraries(flightmare_wrapper
+target_link_libraries(flightmare_wrapper_UI
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   stdc++fs
 )
 
-cs_add_executable(flightmare_wrapper_node
-   src/flightmare_wrapper_node.cpp
+
+cs_add_executable(flightmare_wrapper_UI_node
+   src/flightmare_wrapper_UI_node.cpp
 )
 
 
-target_link_libraries(flightmare_wrapper_node
-  flightmare_wrapper
-  ${OpenCV_LIBRARIES}
-  stdc++fs
-  zmq
-  zmqpp
-)
 
+target_link_libraries(flightmare_wrapper_UI_node
+  flightmare_wrapper_UI
+)
 
 # Finish
 cs_install()
