@@ -21,6 +21,7 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   set_waypoints_pub_ = nh_.advertise<nav_msgs::Path>("/hummingbird/set_waypoints",1000);
   set_home_pub_= nh_.advertise<std_msgs::String>("/hummingbird/set_home", 1000);
   path_pub_= nh_.advertise<nav_msgs::Path>("/path", 1000);
+  velocity_array_pub_= nh_.advertise<trajectory_msgs::JointTrajectory>("/velocity_array", 1000);
   while(ros::ok()){
     selection();
     ros::spinOnce();
@@ -66,6 +67,8 @@ nav_msgs::Path UI::getSqaurePath(float length){
   square.poses.push_back(getPoseMessage(0, -length, 0, 0));
   return square;
 }
+
+
 
 void UI::selection(){
 
@@ -326,7 +329,26 @@ void UI::selection(){
         path_pub_.publish(path);
         ROS_INFO("Published");
         break;         
-      }                              
+      }            
+    case 'l':
+      { 
+        int lp;
+        //float vx,vy,vz,yw, tm;
+        std::cout << "Please enter number of different velocities";
+        std::cin >> lp;
+        trajectory_msgs::JointTrajectory v;
+        for (int i=0;i<lp;i++){
+          std::cout << "Please enter the velocity in x, y and z direction: ";
+          std::cin >> v.points[i].velocities[0],v.points[i].velocities[1], v.points[i].velocities[2];
+          std::cout << "Please enter the yaw ";
+          std::cin >> v.points[i].velocities[3];
+          std::cout << "Please enter the duration of flight ";
+          std::cin >> v.points[i].velocities[4];
+        }
+        velocity_array_pub_.publish(v);
+        ROS_INFO("Published");
+        break;         
+      }                         
     case 'q':
       {
         ros::shutdown();
