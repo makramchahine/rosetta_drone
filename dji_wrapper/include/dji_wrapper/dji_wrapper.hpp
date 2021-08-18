@@ -78,6 +78,7 @@ class DJIWrapper {
   void take_pic(const std_msgs::String &msg);
   void set_home(const std_msgs::String &msg);
   void follow_path(const nav_msgs::Path &msg);
+  void follow_velocity_path(const nav_msgs::Path &msg);
 
   void localFrameRefSubCallback(const sensor_msgs::NavSatFix::ConstPtr& localFrameRef);
   void timeSyncNmeaSubSCallback(const nmea_msgs::Sentence::ConstPtr& timeSyncNmeaMsg);
@@ -88,6 +89,8 @@ class DJIWrapper {
                      float posThresholdInM,
                      float yawThresholdInDeg);
   double quaternionToYaw(const geometry_msgs::Quaternion &msg);
+  void velocityAndYawRateCtrl(const JoystickCommand &offsetDesired, uint32_t timeMs);
+
 
  private:
   ros::NodeHandle nh_;

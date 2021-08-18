@@ -75,6 +75,7 @@ class FlightmareWrapper {
   // callbacks
   void mainLoopCallback(const ros::TimerEvent& event);
   void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
+  void follow_path(const nav_msgs::Path &msg);
 
   bool setUnity(const bool render);
   bool connectUnity(void);
@@ -101,6 +102,7 @@ class FlightmareWrapper {
   ros::Subscriber camera_pos_sub_;
   ros::Subscriber take_pic_sub_;
   ros::Subscriber set_waypoints_sub_;
+  ros::Subscriber path_sub_;
 
   bool executing_trajectory_;
 

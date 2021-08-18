@@ -26,34 +26,16 @@ FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeH
   camera_pos_sub_ = nh_.subscribe("camera_pos", 1000, &FlightmareWrapper::camera_pos, this);
   take_pic_sub_ = nh_.subscribe("take_pic", 1000, &FlightmareWrapper::take_pic, this);
   set_waypoints_sub_ = nh_.subscribe("set_waypoints", 1000, &FlightmareWrapper::set_waypoints, this);
-
-
+  path_sub_ = nh_.subscribe("path", 1000, &FlightmareWrapper::follow_path, this);
 
   arm_pub_ = nh_.advertise<std_msgs::Bool>("bridge/arm", 1);
-
-
-
 
   // quad initialization
   quad_ptr_ = std::make_shared<Quadrotor>();
 
-  /*
-  // add mono camera
-  rgb_camera_ = std::make_shared<RGBCamera>();
-  Vector<3> B_r_BC(0.0, 0.0, 0.3);
-  Matrix<3, 3> R_BC = Quaternion(1.0, 0.0, 0.0, 0.0).toRotationMatrix();
-  std::cout << R_BC << std::endl;
-  rgb_camera_->setFOV(90);
-  rgb_camera_->setWidth(720);
-  rgb_camera_->setHeight(480);
-  rgb_camera_->setRelPose(B_r_BC, R_BC);
-  quad_ptr_->addRGBCamera(rgb_camera_);
-  */
-
   // initialization
   quad_state_.setZero();
   quad_ptr_->reset(quad_state_);
-
 
   // initialize subscriber call backs
   sub_state_est_ = nh_.subscribe("flight_pilot/state_estimate", 1,
@@ -64,8 +46,6 @@ FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeH
   timer_main_loop_.start();
 
   //ADDING CAMERA TO DRONE
-
-
 
   //camera on drone
   rgb_camera2 = std::make_shared<RGBCamera>();
@@ -98,6 +78,12 @@ FlightmareWrapper::FlightmareWrapper(const ros::NodeHandle& nh, const ros::NodeH
   connectUnity();
 }
 
+/**
+* Callback from the subscriber to the pose to animate the new position in Unity.
+* This will not affect Gazebo
+*
+* @param  msg  ros message
+*/
 void FlightmareWrapper::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   quad_state_.x[QS::POSX] = (Scalar)msg->pose.pose.position.x;
   quad_state_.x[QS::POSY] = (Scalar)msg->pose.pose.position.y;
@@ -110,9 +96,8 @@ void FlightmareWrapper::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   quad_ptr_->setState(quad_state_);
   
   ROS_INFO("POSE CALLBACK");
-
-  
 }
+
 
 void FlightmareWrapper::mainLoopCallback(const ros::TimerEvent &event) {
 
@@ -136,8 +121,6 @@ void FlightmareWrapper::mainLoopCallback(const ros::TimerEvent &event) {
       cv_bridge::CvImage(std_msgs::Header(), "bgr8", img).toImageMsg();
     rgb_msg->header.stamp = timestamp;
     rgb_pub.publish(rgb_msg);
-
-
 
     rgb_camera2->getDepthMap(img);
     sensor_msgs::ImagePtr depth_msg =
@@ -187,20 +170,37 @@ bool FlightmareWrapper::loadParams(void) {
   return true;
 }
 
-
+/**
+* Starts up the motor in flightmare, equivalent to pressing 'start' 
+*
+* @param  msg  ros message
+*/
 void FlightmareWrapper::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
   autopilot_helper_.sendStart();
   ROS_INFO("Start");
 }
 
+/**
+* Begins the takeoff in flightmare, equivalent to pressing 'arm bridge'
+*
+* @param  msg  ros message
+*/
 void FlightmareWrapper::takeoff (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
   std_msgs::Bool arm_msg;
   arm_msg.data = true;
   arm_pub_.publish(arm_msg);
 }
 
+/**
+* Sends drone to an absolute position
+* It will maintain its current orientation
+* will go to position offset
+*
+* @param  msg  ros message
+*/
 void FlightmareWrapper::go_to_pos (const geometry_msgs::Point::ConstPtr &msg){ 
-  const Eigen::Vector3d position_cmd = Eigen::Vector3d(msg->x, msg->y, msg->z);
+  Vector<3> position = quad_ptr_ -> getPosition();
+  const Eigen::Vector3d position_cmd = Eigen::Vector3d((msg->x+position[0]), (msg->y+position[1]), (msg->z+position[2]));
   Eigen::Quaternion current_orientation = quad_state_.q();
 
   geometry_msgs::Quaternion goemetry_quat;
@@ -219,6 +219,13 @@ void FlightmareWrapper::go_to_pos (const geometry_msgs::Point::ConstPtr &msg){
   autopilot_helper_.sendPoseCommand(position_cmd, heading_cmd);
 }
 
+/**
+* Changes the yaw of the drone, this is its absolute orientation
+* It will maintain its current position
+* This functions takes in a float that represents degrees
+*
+* @param  msg  ros message
+*/
 void FlightmareWrapper::set_heading (const std_msgs::Float32 &msg){
   Eigen::Vector3d current_pos;
   Vector<3> position = quad_ptr_ -> getPosition();
@@ -230,14 +237,30 @@ void FlightmareWrapper::set_heading (const std_msgs::Float32 &msg){
 
 }
 
+/**
+* This will land the drone at its current position
+*
+* @param  msg  ros message
+*/
 void FlightmareWrapper::land (const std_msgs::String &msg){ //land the drone
   autopilot_helper_.sendLand();
 }
 
+/**
+* Turns the motors off, including in mid-air
+*
+* @param  msg  ros message
+*/
 void FlightmareWrapper::off(const std_msgs::String &msg){ //turn the motors off
   autopilot_helper_.sendOff();
 }
 
+/**
+* This changes the cameras position in unity
+* In actuality, this changes the unity orientation of the drone while not affecting gazebo
+*
+* @param  msg  ros message
+*/
 void FlightmareWrapper::camera_pos(const geometry_msgs::Quaternion &msg){
   // attach camera to drone
   //nav_msgs::Odometry::ConstPtr send;
@@ -255,6 +278,11 @@ void FlightmareWrapper::camera_pos(const geometry_msgs::Quaternion &msg){
 
 }
 
+/**
+* This will take a picture in unity and save it to the computer
+*
+* @param  msg  ros message
+*/
 void FlightmareWrapper::take_pic(const std_msgs::String &msg){
     if (unity_render_ && unity_ready_) {
       unity_bridge_ptr_->getRender(frame_id);
@@ -278,6 +306,13 @@ void FlightmareWrapper::take_pic(const std_msgs::String &msg){
   }
 }
 
+/**
+* This is incomplete and commented out
+* When complete it should have the ability to carry out a waypoint mission 
+* It uses ros message type nav_msgs::Path 
+* 
+* @param  msg  ros message
+*/
 void FlightmareWrapper::set_waypoints(const nav_msgs::Path &msg){
 // This is stuff from integration_test, please clean up and use what you need
 //   std::vector<Eigen::Vector3d> way_points ;
@@ -303,6 +338,33 @@ void FlightmareWrapper::set_waypoints(const nav_msgs::Path &msg){
 
 
 //   autopilot_helper_.sendTrajectory(trajectory);
+}
+
+/**
+* This will make a drone follow a position and yaw path from a message type of nav_msgs::Path
+* Note: This is different from the DJIWrapper equivalent
+* In this version it will go to the absolute orientation of the path coordinated, in DJIWrapper it goes to an offset from its current orientation
+* This needs to be fixed in the future
+*
+* @param  msg  ros message
+*/
+void FlightmareWrapper::follow_path(const nav_msgs::Path &msg){
+
+  for (int i=0; i<msg.poses.size(); i++){
+    Eigen::Vector3d current_pos;
+    Vector<3> position = quad_ptr_ -> getPosition();
+    const geometry_msgs::PoseStamped pose = msg.poses[i];
+    const Eigen::Vector3d position_cmd = Eigen::Vector3d((pose.pose.position.x+position[0]), (pose.pose.position.y+position[1]), (pose.pose.position.z+position[2]));
+
+    tf2::Quaternion quat_tf;
+    tf2::convert(pose.pose.orientation, quat_tf);
+    tf2::Matrix3x3 matrix(quat_tf);
+
+    double roll, pitch, yaw;
+    matrix.getRPY(roll, pitch, yaw);
+    const double heading_cmd = yaw;
+    autopilot_helper_.sendPoseCommand(position_cmd, heading_cmd);
+  }
 
 
 }
