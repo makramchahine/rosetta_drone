@@ -199,15 +199,7 @@ void DJIWrapper::land(const std_msgs::String &msg){
 void DJIWrapper::off(const std_msgs::String &msg){
 	control_task.request.task = FlightTaskControl::Request::STOP_MOTOR;
 	task_control_client.call(control_task);
-<<<<<<< HEAD
-	ROS_INFO("Drone turned off");
-
- //  }  
-
-	
-=======
 	ROS_INFO("Drone turned off");  
->>>>>>> 351c5cf41141201b7cbff18f1cc7b7e0563b44b6
 }
 
 /**
@@ -288,18 +280,4 @@ void DJIWrapper::follow_path(const nav_msgs::Path &msg){
     double yaw = quaternionToYaw(pose.pose.orientation);
     moveByPosOffset({pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw}, 0.8, 1);
   }
-}
-
-/**
-* Important: unfinished - to be finished by kartikesh
-* Follows a path according to a given velocty and time to be at said velocity
-*
-* @param  msg  ros message
-*/
-void DJIWrapper::follow_velocity_path(const nav_msgs::Path &msg){
-//   for (int i=0; i<msg.poses.size(); i++){
-//     const geometry_msgs::PoseStamped pose = msg.poses[i];
-//     double yaw = quaternionToYaw(pose.pose.orientation);
-//     velocityAndYawRateCtrl( {0, 0, 5.0, 0}, 2000);
-// }
 }
