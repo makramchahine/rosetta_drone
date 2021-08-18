@@ -45,11 +45,8 @@ class UI {
 
   ros::Publisher arm_pub_;
 
-  ros::Subscriber autopilot_feedback_sub_;
-
   ros::Timer measure_tracking_timer_;
 
-  autopilot_helper::AutoPilotHelper autopilot_helper_;
 
   ros::Publisher start_pub_;
   ros::Publisher takeoff_pub_;
