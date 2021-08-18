@@ -1,7 +1,6 @@
 #include <vector>
 
 
-#include <polynomial_trajectories/polynomial_trajectory_settings.h>
 #include <std_msgs/Bool.h>
 #include <trajectory_generation_helper/heading_trajectory_helper.h>
 #include <trajectory_generation_helper/polynomial_trajectory_helper.h>
