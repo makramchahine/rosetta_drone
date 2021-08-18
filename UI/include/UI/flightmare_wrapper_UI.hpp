@@ -1,16 +1,12 @@
 #include <vector>
 
-#include <autopilot/autopilot_states.h>
+
 #include <polynomial_trajectories/polynomial_trajectory_settings.h>
-#include <quadrotor_common/control_command.h>
-#include <quadrotor_common/geometry_eigen_conversions.h>
 #include <std_msgs/Bool.h>
 #include <trajectory_generation_helper/heading_trajectory_helper.h>
 #include <trajectory_generation_helper/polynomial_trajectory_helper.h>
 #include <Eigen/Dense>
 
-#include <autopilot/autopilot_helper.h>
-#include <quadrotor_msgs/AutopilotFeedback.h>
 #include <tf2/LinearMath/Quaternion.h>
 
 #include "geometry_msgs/Quaternion.h"

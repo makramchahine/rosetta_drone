@@ -135,7 +135,9 @@ void UI::selection(){
   std::cout 
       << "| [k] Square       "
       << std::endl;          
-
+  std::cout 
+      << "| [l] Velocity Command       "
+      << std::endl;  
   std::cout 
       << "| [q] Kill Node         "
       << std::endl;

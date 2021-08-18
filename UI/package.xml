@@ -57,18 +57,9 @@
   <build_export_depend>std_msgs</build_export_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-  <depend>rpg_quadrotor_control</depend>
-  <depend>rpg_quadrotor_common</depend>
-  <depend>flightros</depend>
-  <depend>flightlib</depend>
 
-  <depend>autopilot</depend>
   <depend>eigen_catkin</depend>
   <depend>polynomial_trajectories</depend>
-  <depend>quadrotor_msgs</depend>
-  <depend>rotors_description</depend>
-  <depend>rotors_gazebo</depend>
-  <depend>rpg_rotors_interface</depend>
   <depend>trajectory_generation_helper</depend>
   <depend>geometry_msgs</depend>
   <depend>tf2</depend>
@@ -82,7 +73,6 @@
   <depend>cv_bridge</depend>
   <depend>mav_msgs</depend>
   <depend>LinearMath</depend>
- <depend>dji_osdk_ros</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
