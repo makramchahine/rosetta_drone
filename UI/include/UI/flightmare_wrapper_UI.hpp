@@ -22,6 +22,7 @@
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
 #include "std_msgs/Header.h"
+#include "trajectory_msgs/JointTrajectory.h"
 #include <math.h>
 
 #include <sstream>
@@ -65,7 +66,7 @@ class UI {
   ros::Publisher set_waypoints_pub_;
   ros::Publisher set_home_pub_;
   ros::Publisher path_pub_;
-
+  ros::Publisher velocity_array_pub_;
 
   bool executing_trajectory_;
 

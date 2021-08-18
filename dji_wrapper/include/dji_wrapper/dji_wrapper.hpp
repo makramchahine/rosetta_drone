@@ -41,6 +41,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <nav_msgs/Odometry.h>
+#include <trajectory_msgs/JointTrajectory.h>
 
 #include <dji_osdk_ros/GimbalAction.h>
 
@@ -78,7 +79,11 @@ class DJIWrapper {
   void take_pic(const std_msgs::String &msg);
   void set_home(const std_msgs::String &msg);
   void follow_path(const nav_msgs::Path &msg);
+<<<<<<< HEAD
+  void velocity_movement(const trajectory_msgs::JointTrajectory msg);
+=======
   void follow_velocity_path(const nav_msgs::Path &msg);
+>>>>>>> 351c5cf41141201b7cbff18f1cc7b7e0563b44b6
 
   void localFrameRefSubCallback(const sensor_msgs::NavSatFix::ConstPtr& localFrameRef);
   void timeSyncNmeaSubSCallback(const nmea_msgs::Sentence::ConstPtr& timeSyncNmeaMsg);
@@ -112,7 +117,7 @@ class DJIWrapper {
   ros::Subscriber take_pic_sub_;
   ros::Subscriber set_home_sub_;
   ros::Subscriber path_sub_;
-
+  ros::Subscriber vel_arr_sub_;
 
 
   ros::Subscriber localFrameRefSub;

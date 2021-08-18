@@ -16,6 +16,7 @@ DJIWrapper::DJIWrapper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   gimbal_control_client = nh_.serviceClient<GimbalAction>("/gimbal_task_control");
   set_home_sub_ = nh_.subscribe("set_home", 1000, &DJIWrapper::set_home, this);
   path_sub_ = nh_.subscribe("path", 1000, &DJIWrapper::follow_path, this);
+  vel_arr_sub_ = nh_.subscribe("velocity_array", 1000, &DJIWrapper::velocity_movement, this);
 
  
   camera_start_shoot_single_photo_client = nh_.serviceClient<CameraStartShootSinglePhoto>(
@@ -23,6 +24,23 @@ DJIWrapper::DJIWrapper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   camera_stop_shoot_photo_client = nh_.serviceClient<CameraStopShootPhoto>("camera_stop_shoot_photo");
   ROS_INFO("end of constructor");
  }
+
+void DJIWrapper::velocity_movement(const trajectory_msgs::JointTrajectory msg){
+  FlightTaskControl flightTaskControl;
+  flightTaskControl.request.task = FlightTaskControl::Request::TASK_VELOCITY_AND_YAWRATE_CONTROL;
+  int n= sizeof(msg.points)/sizeof(msg.points[0]);
+  for (int i=0;i<n;i++){
+    flightTaskControl.request.joystickCommand.x = msg.points[i].velocities[0];
+    flightTaskControl.request.joystickCommand.y = msg.points[i].velocities[1];
+    flightTaskControl.request.joystickCommand.z = msg.points[i].velocities[2];
+    flightTaskControl.request.joystickCommand.yaw = msg.points[i].velocities[3];
+    flightTaskControl.request.velocityControlTimeMs  =msg.points[i].velocities[4];
+
+    flight_control_client.call(flightTaskControl);
+
+  }
+  
+}
 void DJIWrapper::localFrameRefSubCallback(const sensor_msgs::NavSatFix::ConstPtr& localFrameRef)
 {
   local_Frame_ref_ = *localFrameRef;
@@ -181,7 +199,15 @@ void DJIWrapper::land(const std_msgs::String &msg){
 void DJIWrapper::off(const std_msgs::String &msg){
 	control_task.request.task = FlightTaskControl::Request::STOP_MOTOR;
 	task_control_client.call(control_task);
+<<<<<<< HEAD
+	ROS_INFO("Drone turned off");
+
+ //  }  
+
+	
+=======
 	ROS_INFO("Drone turned off");  
+>>>>>>> 351c5cf41141201b7cbff18f1cc7b7e0563b44b6
 }
 
 /**
