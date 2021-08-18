@@ -65,6 +65,13 @@ void DJIWrapper::timeSyncPpsSourceSubCallback(const std_msgs::String::ConstPtr& 
   time_sync_pps_source_ = *timeSyncPpsSource;
 }
 
+/**
+* This moves the drone by a specific offset, position and orientation
+*
+* @param  JoystickCommand  containes position and yaw
+* @param posThresholdInM   magic number .8
+* @param yawThresholdInDeg magiv number 1
+*/
 bool DJIWrapper::moveByPosOffset(const JoystickCommand &offsetDesired,
                      float posThresholdInM,
                      float yawThresholdInDeg)
@@ -82,6 +89,11 @@ bool DJIWrapper::moveByPosOffset(const JoystickCommand &offsetDesired,
   return flightTaskControl.response.result;
 }
 
+/**
+* This returns a yaw that was encoded in a quaternion
+*
+* @param  msg  ros message
+*/
 double DJIWrapper::quaternionToYaw(const geometry_msgs::Quaternion &msg){
   tf2::Quaternion quat_tf;
   tf2::convert(msg, quat_tf);
@@ -91,15 +103,56 @@ double DJIWrapper::quaternionToYaw(const geometry_msgs::Quaternion &msg){
   return yaw;
 }
 
-void DJIWrapper::starter (const std_msgs::String &msg){ //this will start the drone and then do arm bridge
-	// this will actually make the drone takeoff so only uncomment if you are ready for that
+// void DJIWrapper::velocityAndYawRateCtrl(const JoystickCommand &offsetDesired, uint32_t timeMs)
+// {
+//   double originTime  = 0;
+//   double currentTime = 0;
+//   uint64_t elapsedTimeInMs = 0;
+  
+//   SetJoystickMode joystickMode;
+//   JoystickAction joystickAction;
 
+//   joystickMode.request.horizontal_mode = joystickMode.request.HORIZONTAL_VELOCITY;
+//   joystickMode.request.vertical_mode = joystickMode.request.VERTICAL_VELOCITY;
+//   joystickMode.request.yaw_mode = joystickMode.request.YAW_RATE;
+//   joystickMode.request.horizontal_coordinate = joystickMode.request.HORIZONTAL_GROUND;
+//   joystickMode.request.stable_mode = joystickMode.request.STABLE_ENABLE;
+//   set_joystick_mode_client.call(joystickMode);
+
+//   joystickAction.request.joystickCommand.x = offsetDesired.x;
+//   joystickAction.request.joystickCommand.y = offsetDesired.y;
+//   joystickAction.request.joystickCommand.z = offsetDesired.z;
+//   joystickAction.request.joystickCommand.yaw = offsetDesired.yaw;
+
+//   originTime  = ros::Time::now().toSec();
+//   currentTime = originTime;
+//   elapsedTimeInMs = (currentTime - originTime)*1000;
+
+//   while(elapsedTimeInMs <= timeMs)
+//   {
+//     currentTime = ros::Time::now().toSec();
+//     elapsedTimeInMs = (currentTime - originTime) * 1000;
+//     joystick_action_client.call(joystickAction);
+//   }
+// }
+
+/**
+* This will start the drone
+*
+* @param  msg  ros message
+*/
+void DJIWrapper::starter (const std_msgs::String &msg){ 
 	// start:
 	control_task.request.task = FlightTaskControl::Request::START_MOTOR;
 	task_control_client.call(control_task);
   ROS_INFO("Start motors task succesful");
 }
 
+/**
+* This will make the drone take off
+*
+* @param  msg  ros message
+*/
 void DJIWrapper::takeoff (const std_msgs::String &msg){
   //takeoff:
   control_task.request.task = FlightTaskControl::Request::TASK_TAKEOFF;
@@ -107,32 +160,62 @@ void DJIWrapper::takeoff (const std_msgs::String &msg){
   ROS_INFO("Takeoff task succesful");
 }
 
+/**
+* This will move the drone by a position offset
+*
+* @param  msg  ros message
+*/
 void DJIWrapper::go_to_pos(const geometry_msgs::Point::ConstPtr &msg){
   moveByPosOffset({msg->x, msg->y, msg->z, 0}, 0.8, 1);
   ROS_INFO("Position control task succesful");
 }
 
+/**
+* This will change the orientation by offset, it takes in degrees
+*
+* @param  msg  ros message
+*/
 void DJIWrapper::set_heading(const std_msgs::Float32 &msg){
   moveByPosOffset({0, 0, 0, msg.data}, 0.8, 1);
+  ROS_INFO("Heading control task succesful");
 }
 
+/**
+* This will land the drone
+*
+* @param  msg  ros message
+*/
 void DJIWrapper::land(const std_msgs::String &msg){
-	// //this will actually make the drone land so only uncomment if you are ready for that
 	control_task.request.task = FlightTaskControl::Request::TASK_LAND;
   task_control_client.call(control_task);
 	ROS_INFO("Land task succesful");
 }
 
+/**
+* This will turn the motors off
+*
+* @param  msg  ros message
+*/
 void DJIWrapper::off(const std_msgs::String &msg){
 	control_task.request.task = FlightTaskControl::Request::STOP_MOTOR;
 	task_control_client.call(control_task);
+<<<<<<< HEAD
 	ROS_INFO("Drone turned off");
 
  //  }  
 
 	
+=======
+	ROS_INFO("Drone turned off");  
+>>>>>>> 351c5cf41141201b7cbff18f1cc7b7e0563b44b6
 }
 
+/**
+* This changes the gimbla camera position using a quaternion
+* Final gimbalAction has to be in radians
+*
+* @param  msg  ros message
+*/
 void DJIWrapper::camera_pos(const geometry_msgs::Quaternion::ConstPtr &msg){
 	//this is for the gimbal, not main camera
   ROS_INFO("in camera pos");
@@ -155,17 +238,26 @@ void DJIWrapper::camera_pos(const geometry_msgs::Quaternion::ConstPtr &msg){
   gimbal_control_client.call(gimbalAction);
 }
 
+/**
+* Takes a picture through the gimbal
+* picture is saved to gimbal's sd card
+*
+* @param  msg  ros message
+*/
 void DJIWrapper::take_pic(const std_msgs::String &msg){
 	//this is for the gimbal, not the main camera
 	cv::Mat img;
-
   CameraStartShootSinglePhoto cameraStartShootSinglePhoto;
   cameraStartShootSinglePhoto.request.payload_index = static_cast<uint8_t>(dji_osdk_ros::PayloadIndex::PAYLOAD_INDEX_0);
   camera_start_shoot_single_photo_client.call(cameraStartShootSinglePhoto);
   //cv::imwrite("/home/ita/flightmare_ws/dronepic.jpg", img);
-
 }
 
+/**
+* This sets the drone's current position to home
+*
+* @param  msg  ros message
+*/
 void DJIWrapper::set_home(const std_msgs::String &msg){
   localFrameRefSub     = nh_.subscribe("dji_osdk_ros/local_frame_ref", 10, &DJIWrapper::localFrameRefSubCallback,this);
   timeSyncNmeaSub      = nh_.subscribe("dji_osdk_ros/time_sync_nmea_msg", 10, &DJIWrapper::timeSyncNmeaSubSCallback,this);
@@ -184,10 +276,30 @@ void DJIWrapper::set_home(const std_msgs::String &msg){
   }
 }
 
+/**
+* The drone will follow a path given in nav_msgs::Path
+* The path contains orientation and position
+*
+* @param  msg  ros message
+*/
 void DJIWrapper::follow_path(const nav_msgs::Path &msg){
   for (int i=0; i<msg.poses.size(); i++){
     const geometry_msgs::PoseStamped pose = msg.poses[i];
     double yaw = quaternionToYaw(pose.pose.orientation);
     moveByPosOffset({pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, yaw}, 0.8, 1);
   }
+}
+
+/**
+* Important: unfinished - to be finished by kartikesh
+* Follows a path according to a given velocty and time to be at said velocity
+*
+* @param  msg  ros message
+*/
+void DJIWrapper::follow_velocity_path(const nav_msgs::Path &msg){
+//   for (int i=0; i<msg.poses.size(); i++){
+//     const geometry_msgs::PoseStamped pose = msg.poses[i];
+//     double yaw = quaternionToYaw(pose.pose.orientation);
+//     velocityAndYawRateCtrl( {0, 0, 5.0, 0}, 2000);
+// }
 }

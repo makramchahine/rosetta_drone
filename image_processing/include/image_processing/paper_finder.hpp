@@ -12,7 +12,12 @@
 using namespace cv;
 using namespace std;
 
-
+/**
+* Subscribes to a camera stream and tries to detect a white piece of paper in it and calculate its area
+* It then publishes those areas. It can also display a version of the video with the detected paper outlined in red
+*
+* @see         PaperCommander
+*/
 class PaperFinder {
  public:
   PaperFinder(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);

@@ -29,6 +29,12 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   
 }
 
+/**
+* Returns a quaternion from a yaw input
+* Yaw input should be in degrees
+*
+* @param  yaw  float
+*/
 tf2::Quaternion UI::yawToQuaternion(float yaw){
   tf2::Quaternion myQuaternion;
   myQuaternion.setRPY(0,0,(yaw*M_PI/180));
@@ -36,6 +42,14 @@ tf2::Quaternion UI::yawToQuaternion(float yaw){
   return myQuaternion;
 }
 
+/**
+* Returns a pose stamped from an x, y, z, and yaw input
+*
+* @param  x  float
+* @param  y  float
+* @param  z  float
+* @param  yaw  float
+*/
 geometry_msgs::PoseStamped UI::getPoseMessage(float x, float y, float z, float yaw){
   geometry_msgs::PoseStamped poseStamped;
   tf2::Quaternion orientation = yawToQuaternion(yaw);
@@ -55,6 +69,13 @@ geometry_msgs::PoseStamped UI::getPoseMessage(float x, float y, float z, float y
   return poseStamped;
 }
 
+/**
+* Returns a nav_msgs:path for a square
+* The path is an offset path, not exact coordinates
+* Input is the length of the square
+* 
+* @param  length  float
+*/
 nav_msgs::Path UI::getSqaurePath(float length){
   nav_msgs::Path square;
   std_msgs::Header header_msg;
@@ -68,8 +89,19 @@ nav_msgs::Path UI::getSqaurePath(float length){
   return square;
 }
 
+<<<<<<< HEAD
 
 
+=======
+/**
+* This is the main UI for the wrapper
+* From here it will publish to the general topics
+* If something only publishes a string that says 'hi' it is because there is no information that needs to be passed, just that action should take place ie: taking off
+* Waypoint function does not yet work, should eventually be done through nav_msgs path
+*
+* @param  yaw  float
+*/
+>>>>>>> 351c5cf41141201b7cbff18f1cc7b7e0563b44b6
 void UI::selection(){
 
   std::cout
