@@ -1,4 +1,4 @@
-#include "flightmare_wrapper/flightmare_wrapper_UI.hpp"
+#include "UI/flightmare_wrapper_UI.hpp"
 
 int main(int argc, char **argv){
   ros::init(argc, argv, "UI_pub");
