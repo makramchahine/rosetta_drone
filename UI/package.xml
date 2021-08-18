@@ -59,7 +59,6 @@
   <exec_depend>std_msgs</exec_depend>
 
   <depend>eigen_catkin</depend>
-  <depend>trajectory_generation_helper</depend>
   <depend>geometry_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>

@@ -2,8 +2,6 @@
 
 
 #include <std_msgs/Bool.h>
-#include <trajectory_generation_helper/heading_trajectory_helper.h>
-#include <trajectory_generation_helper/polynomial_trajectory_helper.h>
 #include <Eigen/Dense>
 
 #include <tf2/LinearMath/Quaternion.h>
