@@ -1,0 +1,2 @@
+Stuff for the paper finding example. The paper_finder node searches the input image stream for a piece of paper using algorithms™ and publishes to a topic with the area of the detected paper. The paper_commander node subscribes to the area topic and prints to the console whether to move closer or farther  
+There is a dynamic blur filter size that allows this to work with webcam input, flightmare images, and gimbal camera images
