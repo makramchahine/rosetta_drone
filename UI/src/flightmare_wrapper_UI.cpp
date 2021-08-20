@@ -10,18 +10,18 @@ UI::UI(const ros::NodeHandle& nh, const ros::NodeHandle& pnh)
   : nh_(nh),
     pnh_(pnh) {
 
-  start_pub_ = nh_.advertise<std_msgs::String>("/start", 1000);
-  takeoff_pub_ = nh_.advertise<std_msgs::String>("/takeoff", 1000);
-  pos_pub_ =  nh_.advertise<geometry_msgs::Point>("/pos", 1000);
-  heading_pub_ = nh_.advertise<std_msgs::Float32>("/heading",1000);
-  land_pub_  = nh_.advertise<std_msgs::String>("/land", 1000);
-  off_pub_  = nh_.advertise<std_msgs::String>("/off", 1000);
-  camera_pos_pub_ = nh_.advertise<geometry_msgs::Quaternion>("/camera_pos", 1000);
-  take_pic_pub_ = nh_.advertise<std_msgs::String>("/take_pic", 1000);
-  set_waypoints_pub_ = nh_.advertise<nav_msgs::Path>("/set_waypoints",1000);
-  set_home_pub_= nh_.advertise<std_msgs::String>("/set_home", 1000);
-  path_pub_= nh_.advertise<nav_msgs::Path>("/path", 1000);
-  velocity_array_pub_= nh_.advertise<trajectory_msgs::JointTrajectory>("/velocity_array", 1000);
+  start_pub_ = nh_.advertise<std_msgs::String>("start", 1000);
+  takeoff_pub_ = nh_.advertise<std_msgs::String>("takeoff", 1000);
+  pos_pub_ =  nh_.advertise<geometry_msgs::Point>("pos", 1000);
+  heading_pub_ = nh_.advertise<std_msgs::Float32>("heading",1000);
+  land_pub_  = nh_.advertise<std_msgs::String>("land", 1000);
+  off_pub_  = nh_.advertise<std_msgs::String>("off", 1000);
+  camera_pos_pub_ = nh_.advertise<geometry_msgs::Quaternion>("camera_pos", 1000);
+  take_pic_pub_ = nh_.advertise<std_msgs::String>("take_pic", 1000);
+  set_waypoints_pub_ = nh_.advertise<nav_msgs::Path>("set_waypoints",1000);
+  set_home_pub_= nh_.advertise<std_msgs::String>("set_home", 1000);
+  path_pub_= nh_.advertise<nav_msgs::Path>("path", 1000);
+  velocity_array_pub_= nh_.advertise<trajectory_msgs::JointTrajectory>("velocity_array", 1000);
   while(ros::ok()){
     selection();
     ros::spinOnce();

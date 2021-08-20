@@ -1,0 +1,6 @@
+<launch>
+	<arg name="quad_name" default="hummingbird"/>
+	<group ns="$(arg quad_name)" >
+		<include file="$(find UI)/launch/ui.launch" />
+	</group>
+</launch>

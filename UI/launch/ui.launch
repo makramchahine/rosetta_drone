@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="UI" type="flightmare_wrapper_UI_node" name="ui_node" output="screen">
+    </node>
+</launch>
