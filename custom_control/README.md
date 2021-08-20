@@ -1,0 +1,3 @@
+Old code pioneering how to get flightmare to both publish a camera stream and have a controllable drone - it was used as a basis for flightmare_wrapper and it was based on the camera and flight_pilot flightmare examples
+The CMakeLists compilation was removed since we didn’t want to compile the version on Joseph’s computer - it was changed by adding a way to change the drone size in flightlib to enable a gimbal camera controllable by flightmare_wrapper_UI and by using a custom scene with the paper example. These aren’t on the git so it shouldn’t be built except on joseph’s machine.
+It can be launched with rotors_gazebo_custom.launch
