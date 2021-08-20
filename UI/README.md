@@ -1,0 +1,1 @@
+Basically a control node. This gives you options when you run it. It will run the same thing on the drone and flightmare through dji_wrapper and flightmare_wrapper. Based on the selection of the user, it will publish to the common topics used. 
