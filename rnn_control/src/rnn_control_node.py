@@ -13,9 +13,9 @@ def image_cb(msg):
     im_smaller = im.resize((256, 144), resample=PIL.Image.BILINEAR)
 
     # run inference on im_smaller
-    vel_cmd, hidden_state = single_step_model([im_smaller, hidden])
+    vel_cmd, hidden_state = single_step_model([im_smaller, hidden_state])
 
-    req = dji_srv.FlightTaskControlReq()
+    req = dji_srv.FlightTaskControlRequest()
     req.task = dji_srv.FlightTaskControl.TASK_VELOCITY_AND_YAWRATE_CONTROL
     req.joystickCommand.x = vel_cmd[0]
     req.joystickCommand.y = vel_cmd[1]
@@ -26,11 +26,13 @@ def image_cb(msg):
     velocity_service.call(req)
 
 
-    last_model = tf.keras.models.load_model(checkpoint)
-    weights_list = last_model.get_weights()
 
 model_name = 'ncp'
 checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000900_crop-0.000000_epoch-020_val_loss:0.2127_mse:0.1679_2021:09:20:02:24:31'
+
+last_model = tf.keras.models.load_model(checkpoint_name)
+weights_list = last_model.get_weights()
+
 
 inputs = keras.Input(shape=IMAGE_SHAPE)
 
@@ -73,10 +75,8 @@ if model_name == 'ncp':
 
 hidden_state = tf.zeros((1, rnn_cell.state_size))
 
-
-rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, image_cb)
 velocity_service = rospy.ServiceProxy('/flight_task_control')
-
+rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, image_cb)
 
 
 rospy.spin()
