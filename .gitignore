@@ -35,3 +35,4 @@
 *.pyc
 
 *CATKIN_IGNORE
+*.swo
