@@ -36,3 +36,6 @@
 
 *CATKIN_IGNORE
 *.swo
+
+# IDE files
+.idea/

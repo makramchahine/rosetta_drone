@@ -1,8 +1,14 @@
 #!/usr/bin/python
+import PIL
+import dji_osdk_ros.srv as dji_srv
+import kerasncp as kncp
 import numpy as np
 import rospy
-import dji_osdk_ros.srv as dji_srv
+import tensorflow as tf
+from PIL import Image
+from kerasncp.tf import LTCCell
 from sensor_msgs.msg import Image
+from tensorflow import keras
 
 
 def image_cb(msg):
@@ -26,14 +32,13 @@ def image_cb(msg):
     velocity_service.call(req)
 
 
-
 model_name = 'ncp'
 checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000900_crop-0.000000_epoch-020_val_loss:0.2127_mse:0.1679_2021:09:20:02:24:31'
 
 last_model = tf.keras.models.load_model(checkpoint_name)
 weights_list = last_model.get_weights()
 
-
+IMAGE_SHAPE = (144, 256, 3)
 inputs = keras.Input(shape=IMAGE_SHAPE)
 
 rescaling_layer = keras.layers.experimental.preprocessing.Rescaling(1. / 255)
@@ -49,10 +54,10 @@ x = keras.layers.Conv2D(filters=8, kernel_size=(3, 3), strides=(2, 2), activatio
 # fully connected layers
 x = keras.layers.Flatten()(x)
 x = keras.layers.Dense(units=128, activation='linear')(x)
+DROPOUT = 0.0
 pre_recurrent_layer = keras.layers.Dropout(rate=DROPOUT)(x)
 
 if model_name == 'ncp':
-
     wiring = kncp.wirings.NCP(
         inter_neurons=18,  # Number of inter neurons
         command_neurons=12,  # Number of command neurons
@@ -71,12 +76,12 @@ if model_name == 'ncp':
 
     # single_step_model.load_weights(checkpoint)
     single_step_model.set_weights(weights_list)
-
+else:
+    raise ValueError(f"Illegal model name {model_name}")
 
 hidden_state = tf.zeros((1, rnn_cell.state_size))
 
-velocity_service = rospy.ServiceProxy('/flight_task_control')
+velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
 rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, image_cb)
-
 
 rospy.spin()
