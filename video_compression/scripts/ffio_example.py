@@ -38,7 +38,7 @@ class VideoCompressionNode():
 
         #False: store images as pngs in a folder
         #True:  store images in mp4 
-        self.image_mode = False
+        self.image_mode = True
 
         #this will be set to the folder containing pngs when image_mode is False
         self.path_appendix = ""
@@ -117,7 +117,7 @@ class VideoCompressionNode():
 
 
             #start rosbag
-            subprocess.Popen(["sh","/home/dji/catkin_ws/src/rosbagg/src/bagstart.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #subprocess.Popen(["sh","/home/dji/catkin_ws/src/rosbagg/src/bagstart.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             rostime = msg.header.stamp#rospy.Time.now()
             time = rostime.secs + rostime.nsecs * 1e-9
@@ -152,7 +152,7 @@ class VideoCompressionNode():
             self.logger.close_writer()
 
             #stop rosbag
-            subprocess.Popen(["sh","/home/dji/catkin_ws/src/rosbagg/src/bagend.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #subprocess.Popen(["sh","/home/dji/catkin_ws/src/rosbagg/src/bagend.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             self.video_open = False
             return
@@ -167,7 +167,7 @@ class VideoCompressionNode():
             time = rostime.secs + rostime.nsecs * 1e-9
  
             if self.image_mode:
-                cv2.imwrite(os.path.join(self.path, self.path_appendix,  str(time) + ".png"), im)
+                cv2.imwrite(os.path.join(self.path, self.path_appendix,  ('%.3f' % time) + ".png"), im)
             else:
                 print('\nrehsape took %f seconds' % (TimerTime.time() - t0))
                 t0 = TimerTime.time()
