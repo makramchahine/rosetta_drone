@@ -29,8 +29,6 @@ def image_cb(msg):
     last_model = tf.keras.models.load_model(checkpoint)
     weights_list = last_model.get_weights()
 
-#layers = [l for l in last_model.layers]
-
 model_name = 'ncp'
 checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000900_crop-0.000000_epoch-020_val_loss:0.2127_mse:0.1679_2021:09:20:02:24:31'
 
