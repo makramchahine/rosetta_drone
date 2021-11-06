@@ -32,3 +32,6 @@
 *.app
 
 *.swp
+*.pyc
+
+*CATKIN_IGNORE
