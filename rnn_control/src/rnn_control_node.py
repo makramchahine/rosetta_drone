@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+
 import PIL
 import dji_osdk_ros.srv as dji_srv
 import kerasncp as kncp
@@ -15,6 +17,11 @@ def image_cb(msg):
     global hidden_state, single_step_model
 
     im_np = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
+
+    # apply normalization
+    im_np = im_np - mean
+    im_np = im_np / variance
+
     im = Image.fromarray(im_np)
     im_smaller = im.resize((256, 144), resample=PIL.Image.BILINEAR)
 
@@ -33,16 +40,21 @@ def image_cb(msg):
 
 
 model_name = 'ncp'
+# make sure checkpoint includes script dir so script can be run from any file
+script_dir = os.path.dirname(os.path.abspath(__file__))
 checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000900_crop-0.000000_epoch-020_val_loss:0.2127_mse:0.1679_2021:09:20:02:24:31'
+checkpoint_path = os.path.join(script_dir, checkpoint_name)
 
-last_model = tf.keras.models.load_model(checkpoint_name)
+last_model = tf.keras.models.load_model(checkpoint_path)
 weights_list = last_model.get_weights()
 
 IMAGE_SHAPE = (144, 256, 3)
 inputs = keras.Input(shape=IMAGE_SHAPE)
 
 rescaling_layer = keras.layers.experimental.preprocessing.Rescaling(1. / 255)
-# TODO: normalization layer unssupported by version of tensorflow on drone. Data needs to be normalized before input
+# normalization layer unssupported by version of tensorflow on drone. Data instead normalized in callback
+mean = [0.41718618, 0.48529191, 0.38133072]
+variance = [.057, .05, .061]
 # normalization_layer = keras.layers.experimental.preprocessing.Normalization(mean=[0.41718618, 0.48529191, 0.38133072],
 #                                                                             variance=[.057, .05, .061])
 x = rescaling_layer(inputs)
@@ -84,6 +96,6 @@ hidden_state = tf.zeros((1, rnn_cell.state_size))
 
 velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
 rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, image_cb)
-
+rospy.init_node("rnn_control")
 print("Finished initialization of model and ros setup")
 rospy.spin()
