@@ -42,10 +42,11 @@ IMAGE_SHAPE = (144, 256, 3)
 inputs = keras.Input(shape=IMAGE_SHAPE)
 
 rescaling_layer = keras.layers.experimental.preprocessing.Rescaling(1. / 255)
-normalization_layer = keras.layers.experimental.preprocessing.Normalization(mean=[0.41718618, 0.48529191, 0.38133072],
-                                                                            variance=[.057, .05, .061])
+# TODO: normalization layer unssupported by version of tensorflow on drone. Data needs to be normalized before input
+# normalization_layer = keras.layers.experimental.preprocessing.Normalization(mean=[0.41718618, 0.48529191, 0.38133072],
+#                                                                             variance=[.057, .05, .061])
 x = rescaling_layer(inputs)
-x = normalization_layer(x)
+# x = normalization_layer(x)
 
 x = keras.layers.Conv2D(filters=16, kernel_size=(5, 5), strides=(3, 3), activation='relu')(x)
 x = keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
