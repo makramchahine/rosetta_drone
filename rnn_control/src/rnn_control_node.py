@@ -76,7 +76,7 @@ if model_name == 'ncp':
     single_step_model = tf.keras.Model([inputs, inputs_state], [motor_out, output_states])
 
     # single_step_model.load_weights(checkpoint)
-    single_step_model.set_weights(weights_list)
+    single_step_model.set_weights(weights_list[3:])
 else:
     raise ValueError(f"Illegal model name {model_name}")
 
@@ -85,4 +85,5 @@ hidden_state = tf.zeros((1, rnn_cell.state_size))
 velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
 rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, image_cb)
 
+print("Finished initialization of model and ros setup")
 rospy.spin()
