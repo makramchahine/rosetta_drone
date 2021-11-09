@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 import PIL
 import dji_osdk_ros.srv as dji_srv
 import kerasncp as kncp
