@@ -21,13 +21,14 @@ def image_cb(msg):
 
     im = PIL.Image.fromarray(im_np)
     im_smaller = im.resize((256, 144), resample=PIL.Image.BILINEAR)
+    im_smaller = np.expand_dims(im_smaller, 0)
 
     # run inference on im_smaller
     vel_cmd, hidden_state = single_step_model([im_smaller, hidden_state])
 
     print(vel_cmd)
     req = dji_srv.FlightTaskControlRequest()
-    req.task = dji_srv.FlightTaskControl.TASK_VELOCITY_AND_YAWRATE_CONTROL
+    req.task = dji_srv.FlightTaskControlRequest.TASK_VELOCITY_AND_YAWRATE_CONTROL
     req.joystickCommand.x = vel_cmd[0]
     req.joystickCommand.y = vel_cmd[1]
     req.joystickCommand.z = vel_cmd[2]
