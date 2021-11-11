@@ -7,7 +7,7 @@ import kerasncp as kncp
 import numpy as np
 import rospy
 import tensorflow as tf
-from PIL import Image
+import PIL.Image
 from kerasncp.tf import LTCCell
 from sensor_msgs.msg import Image
 from tensorflow import keras
@@ -17,17 +17,19 @@ def image_cb(msg):
     global hidden_state, single_step_model
 
     im_np = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
+    print(im_np.shape)
 
     # apply normalization
     im_np = im_np - mean
     im_np = im_np / variance
 
-    im = Image.fromarray(im_np)
+    im = PIL.Image.fromarray(im_np)
     im_smaller = im.resize((256, 144), resample=PIL.Image.BILINEAR)
 
     # run inference on im_smaller
     vel_cmd, hidden_state = single_step_model([im_smaller, hidden_state])
 
+    print(vel_cmd)
     req = dji_srv.FlightTaskControlRequest()
     req.task = dji_srv.FlightTaskControl.TASK_VELOCITY_AND_YAWRATE_CONTROL
     req.joystickCommand.x = vel_cmd[0]
@@ -91,6 +93,7 @@ if model_name == 'ncp':
     single_step_model.set_weights(weights_list[3:])
 else:
     raise ValueError(f"Illegal model name {model_name}")
+print('Loaded Model!!!')
 
 hidden_state = tf.zeros((1, rnn_cell.state_size))
 
