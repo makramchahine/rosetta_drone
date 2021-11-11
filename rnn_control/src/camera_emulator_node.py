@@ -70,7 +70,7 @@ def get_avg_rate(im_list: List[str]):
     # get last part of filename, and strip extension to get time in seconds
     first_time = get_time_from_filename(im_list[first_i])
     last_time = get_time_from_filename(reversed_list[last_i])
-    return (last_time - first_time) / len(im_list)
+    return len(im_list)/ (last_time - first_time)
 
 
 def publish_camera_messages():
@@ -78,7 +78,7 @@ def publish_camera_messages():
     rospy.init_node("camera_emulator")
 
     # setup node state
-    directory = "/home/dji/data/1628628264.261048"
+    directory = "/media/dolphonie/Data/Files/UROP/devens_data/1635515333.207994"
     contents = os.listdir(directory)
     contents = [os.path.join(directory, c) for c in contents if 'png' in c]
     contents.sort()
