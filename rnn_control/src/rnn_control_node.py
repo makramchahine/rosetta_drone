@@ -22,10 +22,6 @@ def image_cb(msg):
     im = PIL.Image.fromarray(im_np)
     im_smaller = im.resize((256, 144), resample=PIL.Image.BILINEAR)
 
-    # apply normalization
-    im_smaller = im_smaller - mean
-    im_smaller = im_smaller / variance
-
     # run inference on im_smaller
     vel_cmd, hidden_state = single_step_model([im_smaller, hidden_state])
 
