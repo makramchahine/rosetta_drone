@@ -78,13 +78,18 @@ def publish_camera_messages():
     rospy.init_node("camera_emulator")
 
     # setup node state
-    directory = "/media/dolphonie/Data/Files/UROP/devens_data/1635515333.207994"
+    default_directory = "/home/dji/data/1628628264.261048"
+    directory = rospy.get_param("~emulator_image_directory", default=default_directory)
     contents = os.listdir(directory)
     contents = [os.path.join(directory, c) for c in contents if 'png' in c]
     contents.sort()
     last_idx = None
     # bridge = CvBridge()
-    rate = rospy.Rate(get_avg_rate(im_list=contents))
+    use_data_rate = rospy.get_param("~use_data_rate", default=False)
+    if use_data_rate:
+        rate = rospy.Rate(get_avg_rate(im_list=contents))
+    else:
+        rate = rospy.Rate(30)
 
     rospy.loginfo("Starting publishing of fake camera images")
     while not rospy.is_shutdown():
