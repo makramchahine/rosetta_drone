@@ -11,31 +11,36 @@ import PIL.Image
 from kerasncp.tf import LTCCell
 from sensor_msgs.msg import Image
 from tensorflow import keras
+import time
 
 
 def image_cb(msg):
     global hidden_state, single_step_model
+    t0 = time.time()
 
     im_np = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
-    print(im_np.shape)
 
     im = PIL.Image.fromarray(im_np)
-    im_smaller = im.resize((256, 144), resample=PIL.Image.BILINEAR)
+    im_smaller = np.array(im.resize((256, 144), resample=PIL.Image.BILINEAR))
+    im_smaller = im_smaller / 255
+    im_smaller = im_smaller - mean
+    im_smaller = im_smaller / variance
     im_smaller = np.expand_dims(im_smaller, 0)
+    print('downsize: %f' % (time.time() - t0))
 
     # run inference on im_smaller
     vel_cmd, hidden_state = single_step_model([im_smaller, hidden_state])
 
-    print(vel_cmd)
     req = dji_srv.FlightTaskControlRequest()
     req.task = dji_srv.FlightTaskControlRequest.TASK_VELOCITY_AND_YAWRATE_CONTROL
-    req.joystickCommand.x = vel_cmd[0]
-    req.joystickCommand.y = vel_cmd[1]
-    req.joystickCommand.z = vel_cmd[2]
-    req.joystickCommand.yaw = vel_cmd[3]
+    req.joystickCommand.x = vel_cmd[0][0]
+    req.joystickCommand.y = vel_cmd[0][1]
+    req.joystickCommand.z = vel_cmd[0][2]
+    req.joystickCommand.yaw = vel_cmd[0][3]
     req.velocityControlTimeMs = 40
 
     velocity_service.call(req)
+    print('full: %f' % (time.time() - t0))
 
 
 model_name = 'ncp'
@@ -56,10 +61,13 @@ mean = [0.41718618, 0.48529191, 0.38133072]
 variance = [.057, .05, .061]
 # normalization_layer = keras.layers.experimental.preprocessing.Normalization(mean=[0.41718618, 0.48529191, 0.38133072],
 #                                                                             variance=[.057, .05, .061])
-x = rescaling_layer(inputs)
-# x = normalization_layer(x)
+#normalization_layer = keras.layers.experimental.preprocessing.Normalization(axis=None)
+#normalization_layer.adapt(np.expand_dims((np.random.randn(*IMAGE_SHAPE) * np.sqrt(variance)) - mean, 0))
+#x = rescaling_layer(inputs)
+#x = normalization_layer(x)
 
-x = keras.layers.Conv2D(filters=16, kernel_size=(5, 5), strides=(3, 3), activation='relu')(x)
+#x = keras.layers.Conv2D(filters=16, kernel_size=(5, 5), strides=(3, 3), activation='relu')(x)
+x = keras.layers.Conv2D(filters=16, kernel_size=(5, 5), strides=(3, 3), activation='relu')(inputs)
 x = keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
 x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
 x = keras.layers.Conv2D(filters=8, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
@@ -87,6 +95,7 @@ if model_name == 'ncp':
     single_step_model = tf.keras.Model([inputs, inputs_state], [motor_out, output_states])
 
     # single_step_model.load_weights(checkpoint)
+    
     single_step_model.set_weights(weights_list[3:])
 else:
     raise ValueError(f"Illegal model name {model_name}")
