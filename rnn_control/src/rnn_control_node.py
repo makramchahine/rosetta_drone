@@ -98,6 +98,7 @@ class RNNControlNode:
         # the last message printed by the state machine - used to reduce spam
         self.last_message = "starting up"
 
+        self.log_data = log_data
         print(f"Logging for this run: {log_data}")
 
         # TODO: load model name and checkpoint, mean, var from rosparam
@@ -128,40 +129,39 @@ class RNNControlNode:
         im_expanded = np.expand_dims(im_smaller, 0)
 
         if not self.video_open and not self.close_video:
-            rostime = msg.header.stamp  # rospy.Time.now()
-            time = rostime.secs + rostime.nsecs * 1e-9
-
             # start generating csv
-            self.logger.open_writer(os.path.join(self.path, "%.2f.csv" % time))
+            if self.log_data:
+                rostime = msg.header.stamp  # rospy.Time.now()
+                time = rostime.secs + rostime.nsecs * 1e-9
+                self.logger.open_writer(os.path.join(self.path, "%.2f.csv" % time))
 
-            # make a directory to store pngs
-            self.path_appendix = '%f' % time
-            os.mkdir(os.path.join(self.path, self.path_appendix))
+                # make a directory to store pngs
+                self.path_appendix = '%f' % time
+                os.mkdir(os.path.join(self.path, self.path_appendix))
+
             self.video_open = True
         elif self.video_open and self.close_video:
             print("ending recording")
-            # dont need to do anything in png mode since the files have already been written
-            # properly close csv writer
-            self.logger.close_writer()
+            if self.log_data:
+                # dont need to do anything in png mode since the files have already been written
+                # properly close csv writer
+                self.logger.close_writer()
             self.video_open = False
 
         if self.video_open:
-            rostime = msg.header.stamp  # rospy.Time.now()
+            if self.log_data:
+                rostime = msg.header.stamp  # rospy.Time.now()
+                time = rostime.secs + rostime.nsecs * 1e-9
+                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % time) + ".png"), im_smaller)
+                # add newest state for this frame to the csv
+                self.logger.write_state(rostime)
 
-            time = rostime.secs + rostime.nsecs * 1e-9
+            # run inference on im_expanded
+            vel_cmd, self.hidden_state = self.single_step_model([im_expanded, self.hidden_state])
 
-            cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % time) + ".png"), im_smaller)
-
-            # add newest state for this frame to the csv
-            self.logger.write_state(rostime)
-
-        # run inference on im_expanded
-        vel_cmd, self.hidden_state = self.single_step_model([im_expanded, self.hidden_state])
-
-        # construct dji velocity command
-        req = dji_msg_from_velocity(vel_cmd)
-
-        self.velocity_service.call(req)
+            # construct dji velocity command
+            req = dji_msg_from_velocity(vel_cmd)
+            self.velocity_service.call(req)
 
     # T -8000 (left)
     # P 8000  (center)
@@ -208,5 +208,5 @@ class RNNControlNode:
 
 if __name__ == "__main__":
     path_param = rospy.get_param("~path", default="/home/dji/flash/")
-    log_daa = rospy.get_param("~log_data", default=False)
-    node = RNNControlNode(path_param, log_daa)
+    log_data = rospy.get_param("~log_data", default=False)
+    node = RNNControlNode(path_param, log_data)
