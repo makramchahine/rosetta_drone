@@ -158,7 +158,7 @@ class RNNControlNode:
 
             # run inference on im_expanded
             vel_cmd, self.hidden_state = self.single_step_model([im_expanded, self.hidden_state])
-
+            print(vel_cmd)
             # construct dji velocity command
             req = dji_msg_from_velocity(vel_cmd)
             self.velocity_service.call(req)
