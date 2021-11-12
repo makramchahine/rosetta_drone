@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-import numpy as np
 import os
 from typing import Optional, List
+
 import PIL.Image
-#import cv2
+import numpy as np
+# import cv2
 import rospy
-#from cv_bridge import CvBridge
+# from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
 
-#def load_next_image(bridge: CvBridge, im_list: List[str], last_idx: Optional[int]):
+# def load_next_image(bridge: CvBridge, im_list: List[str], last_idx: Optional[int]):
 #    """
 #    Retrieves and transforms the next image in the video sequence
 #    :param bridge: CvBridge object for getting ROS messages
@@ -37,8 +38,7 @@ from sensor_msgs.msg import Image
 #        img = bridge.cv2_to_imgmsg(img, "rgb8")
 #    return img, cur_idx, done
 
-def load_next_image(im_list, last_idx):
-
+def load_next_image(im_list: List[str], last_idx: Optional[int] = None):
     cur_idx = last_idx if last_idx is not None else -1
     img = None
     done = False
@@ -54,31 +54,50 @@ def load_next_image(im_list, last_idx):
         img = img.resize((1280, 720), PIL.Image.BILINEAR)
 
     return img, cur_idx, done
-    
-	
+
+
+def get_time_from_filename(name: str) -> float:
+    extension_stripped = name.split("/")[-1].split(".")[:-1]
+    return float(".".join(extension_stripped))
+
+
+def get_avg_rate(im_list: List[str]):
+    # assume im_list sorted
+    _, first_i, _ = load_next_image(im_list)
+    reversed_list = im_list[::-1]
+    _, last_i, _ = load_next_image(reversed_list)
+
+    # get last part of filename, and strip extension to get time in seconds
+    first_time = get_time_from_filename(im_list[first_i])
+    last_time = get_time_from_filename(reversed_list[last_i])
+    return len(im_list)/ (last_time - first_time)
 
 
 def publish_camera_messages():
     pub = rospy.Publisher("dji_osdk_ros/main_camera_images", Image, queue_size=2)
     rospy.init_node("camera_emulator")
-    # TODO: Infer rate from
-    rate = rospy.Rate(30)
 
     # setup node state
-    directory = "/home/dji/data/1628628264.261048"
+    default_directory = "/home/dji/data/1628628264.261048"
+    directory = rospy.get_param("~image_directory", default=default_directory)
     contents = os.listdir(directory)
     contents = [os.path.join(directory, c) for c in contents if 'png' in c]
     contents.sort()
     last_idx = None
-    #bridge = CvBridge()
+    # bridge = CvBridge()
+    use_data_rate = rospy.get_param("~use_data_rate", default=False)
+    if use_data_rate:
+        rate = rospy.Rate(get_avg_rate(im_list=contents))
+    else:
+        rate = rospy.Rate(30)
 
     rospy.loginfo("Starting publishing of fake camera images")
     while not rospy.is_shutdown():
-        #img, last_idx, done = load_next_image(bridge, contents, last_idx)
+        # img, last_idx, done = load_next_image(bridge, contents, last_idx)
         img, last_idx, done = load_next_image(contents, last_idx)
         if not done:
             print('Published index %d' % last_idx)
-            img_data = np.array(img,dtype=np.uint8).ravel().tobytes()
+            img_data = np.array(img, dtype=np.uint8).ravel().tobytes()
             img_msg = Image()
             img_msg.data = img_data
             img_msg.width = 1280
@@ -89,6 +108,7 @@ def publish_camera_messages():
         rate.sleep()
 
     print("Finished publishing fake camera images")
+
 
 if __name__ == "__main__":
     publish_camera_messages()
