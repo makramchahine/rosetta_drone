@@ -79,13 +79,14 @@ def load_model(model_name: str, checkpoint_name: str):
 
 class RNNControlNode:
     def __init__(self, path: str, log_data: bool):
+        rospy.init_node("rnn_control_node")
         # base path to store all files
         self.path = path
 
         # state vars
         self.video_open = False
         self.close_video = True
-        self.logger = Logger() if log_data else None
+        self.logger = Logger()
         self.path_appendix = None
         # how many seconds to wait after a change in input to start accepting more commands
         # this is here as part of the Ramin-proofing state machine
@@ -109,7 +110,6 @@ class RNNControlNode:
         print('Loaded Model')
 
         # init ros
-        rospy.init_node("rnn_control_node")
         self.velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
         rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb)
         rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb)
@@ -208,5 +208,5 @@ class RNNControlNode:
 
 if __name__ == "__main__":
     path_param = rospy.get_param("~path", default="/home/dji/flash/")
-    log_daa = rospy.get_param("~log_data", default=True)
+    log_daa = rospy.get_param("~log_data", default=False)
     node = RNNControlNode(path_param, log_daa)
