@@ -161,7 +161,8 @@ class RNNControlNode:
             print(vel_cmd)
             # construct dji velocity command
             req = dji_msg_from_velocity(vel_cmd)
-            self.velocity_service.call(req)
+            res = self.velocity_service.call(req)
+            print(res)
 
     # T -8000 (left)
     # P 8000  (center)
