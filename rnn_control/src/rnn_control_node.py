@@ -105,14 +105,14 @@ class RNNControlNode:
         model_name = 'ncp'
         checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000900_crop-0.000000_epoch-020_val_loss:0.2127_mse:0.1679_2021:09:20:02:24:31'
         self.single_step_model, rnn_cell = load_model(model_name, checkpoint_name)
+        self.hidden_state = tf.zeros((1, rnn_cell.state_size))
         print('Loaded Model')
 
-        self.hidden_state = tf.zeros((1, rnn_cell.state_size))
-
+        # init ros
+        rospy.init_node("rnn_control_node")
         self.velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
         rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb)
         rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb)
-        rospy.init_node("rnn_control_node")
         print("Finished initialization of model and ros setup")
         rospy.spin()
 
