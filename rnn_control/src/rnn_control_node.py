@@ -11,7 +11,7 @@ import numpy as np
 import rospy
 import tensorflow as tf
 from kerasncp.tf import LTCCell
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, Joy
 from tensorflow import keras
 
 # import logger from other ros package. Add to system path instead of including proper python lib dependency
@@ -94,6 +94,15 @@ class RNNControlNode:
         self.close_video = True
         self.logger = Logger() if log_data else None
         self.path_appendix = None
+        # how many seconds to wait after a change in input to start accepting more commands
+        # this is here as part of the Ramin-proofing state machine
+        self.delay_secs = 5
+        # the last time the flight mode has changed
+        self.last_change_time = rospy.get_time() - self.delay_secs
+        # the most recent flight mode
+        self.last_input = 8000
+        # the last message printed by the state machine - used to reduce spam
+        self.last_message = "starting up"
         print(f"Logging for this run: {log_data}")
 
         # TODO: load model name and checkpoint from rosparam
@@ -106,6 +115,7 @@ class RNNControlNode:
 
         self.velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
         rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb)
+        rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb)
         rospy.init_node("rnn_control_node")
         print("Finished initialization of model and ros setup")
         rospy.spin()
@@ -152,6 +162,48 @@ class RNNControlNode:
         req = dji_msg_from_velocity(vel_cmd)
 
         self.velocity_service.call(req)
+
+    # T -8000 (left)
+    # P 8000  (center)
+    # S 0     (right)
+    def joy_cb(self, msg):
+        """
+        Processes the joystick message to detect mode changes to decide what to do with recording
+
+        Moving the mode switch right turns on recording, and moving it to the left turns off recording
+        There is also a delay that starts counting any time the input changes
+        This way, after a command is given the mode switch has to be in a steady state for some time before
+        new commands can be given, making it ok to accidentally switch it around a bunch while trying to get the switch to the center
+
+        """
+        current_input = msg.axes[4]
+
+        # whether or not we're waiting for a delay
+        waiting = abs(rospy.get_time() - self.last_change_time) < self.delay_secs
+
+        message = ""
+
+        if current_input == -8000 and not self.close_video and not waiting:
+            self.close_video = True
+            message = "close video command sent"
+        elif current_input == 0 and self.close_video and not waiting:
+            self.close_video = False
+            message = "start video command sent"
+        elif not waiting:
+            message = "accepting commands"
+        else:
+            message = "waiting"
+
+        if current_input != self.last_input:
+            self.last_change_time = rospy.get_time()
+            message += "\nwaiting %.2f seconds before allowing next command" % self.delay_secs
+
+        # only send changed messages to avoid spam
+        if self.last_message != message:
+            print(message)
+            self.last_message = message
+
+        self.last_input = current_input
 
 
 if __name__ == "__main__":

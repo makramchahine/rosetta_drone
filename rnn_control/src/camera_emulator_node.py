@@ -79,7 +79,7 @@ def publish_camera_messages():
 
     # setup node state
     default_directory = "/home/dji/data/1628628264.261048"
-    directory = rospy.get_param("~emulator_image_directory", default=default_directory)
+    directory = rospy.get_param("~image_directory", default=default_directory)
     contents = os.listdir(directory)
     contents = [os.path.join(directory, c) for c in contents if 'png' in c]
     contents.sort()
