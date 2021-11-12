@@ -14,8 +14,10 @@ from kerasncp.tf import LTCCell
 from sensor_msgs.msg import Image
 from tensorflow import keras
 
-# sys.path.append("..")
-# from video_compression.scripts.logger_example import Logger
+# import logger from other ros package. Add to system path instead of including proper python lib dependency
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(script_dir, "..", ".."))
+from video_compression.scripts.logger_example import Logger
 
 
 def dji_msg_from_velocity(vel_cmd):
@@ -31,8 +33,6 @@ def dji_msg_from_velocity(vel_cmd):
 
 def load_model(model_name: str, checkpoint_name: str):
     # make sure checkpoint includes script dir so script can be run from any file
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
     checkpoint_path = os.path.join(script_dir, checkpoint_name)
 
     last_model = tf.keras.models.load_model(checkpoint_path)
