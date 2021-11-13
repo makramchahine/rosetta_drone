@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import time
 
 import PIL
 import PIL.Image
@@ -20,6 +21,7 @@ sys.path.append(os.path.join(script_dir, "..", ".."))
 from video_compression.scripts.logger_example import Logger
 
 
+
 def dji_msg_from_velocity(vel_cmd):
     req = dji_srv.FlightTaskControlRequest()
     req.task = dji_srv.FlightTaskControlRequest.TASK_VELOCITY_AND_YAWRATE_CONTROL
@@ -35,8 +37,8 @@ def load_model(model_name: str, checkpoint_name: str):
     # make sure checkpoint includes script dir so script can be run from any file
     checkpoint_path = os.path.join(script_dir, checkpoint_name)
 
-    last_model = tf.keras.models.load_model(checkpoint_path)
-    weights_list = last_model.get_weights()
+    #last_model = tf.keras.models.load_model(checkpoint_path)
+    #weights_list = last_model.get_weights()
 
     IMAGE_SHAPE = (144, 256, 3)
     inputs = keras.Input(shape=IMAGE_SHAPE)
@@ -70,7 +72,7 @@ def load_model(model_name: str, checkpoint_name: str):
         motor_out, output_states = rnn_cell(pre_recurrent_layer, inputs_state)
         single_step_model = tf.keras.Model([inputs, inputs_state], [motor_out, output_states])
 
-        # single_step_model.load_weights(checkpoint)
+        #single_step_model.load_weights(checkpoint_name)
         single_step_model.set_weights(weights_list[3:])
         return single_step_model, rnn_cell
     else:
@@ -105,13 +107,20 @@ class RNNControlNode:
         self.mean = [0.41718618, 0.48529191, 0.38133072]
         self.variance = [.057, .05, .061]
         model_name = 'ncp'
-        checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000900_crop-0.000000_epoch-020_val_loss:0.2127_mse:0.1679_2021:09:20:02:24:31'
+        #checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000900_crop-0.000000_epoch-020_val_loss:0.2127_mse:0.1679_2021:09:20:02:24:31'
+        checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000800_crop-0.000000_epoch-049_val_loss:0.2528_mse:0.2151_2021:11:10:19:28:04.hdf5'
         self.single_step_model, rnn_cell = load_model(model_name, checkpoint_name)
         self.hidden_state = tf.zeros((1, rnn_cell.state_size))
         print('Loaded Model')
 
         # init ros
         self.velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
+        self.joystick_mode_client = rospy.ServiceProxy('set_joystick_mode', dji_srv.SetJoystickMode)
+        self.joystick_action_client = rospy.ServiceProxy('joystick_action', dji_srv.JoystickAction)
+        self.ca_client = rospy.ServiceProxy('obtain_release_control_authority', dji_srv.ObtainControlAuthority)
+
+
+
         rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb)
         rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb)
         print("Finished initialization of model and ros setup")
@@ -132,11 +141,11 @@ class RNNControlNode:
             # start generating csv
             if self.log_data:
                 rostime = msg.header.stamp  # rospy.Time.now()
-                time = rostime.secs + rostime.nsecs * 1e-9
-                self.logger.open_writer(os.path.join(self.path, "%.2f.csv" % time))
+                rtime = rostime.secs + rostime.nsecs * 1e-9
+                self.logger.open_writer(os.path.join(self.path, "%.2f.csv" % rtime))
 
                 # make a directory to store pngs
-                self.path_appendix = '%f' % time
+                self.path_appendix = '%f' % rtime
                 os.mkdir(os.path.join(self.path, self.path_appendix))
 
             self.video_open = True
@@ -151,18 +160,53 @@ class RNNControlNode:
         if self.video_open:
             if self.log_data:
                 rostime = msg.header.stamp  # rospy.Time.now()
-                time = rostime.secs + rostime.nsecs * 1e-9
-                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % time) + ".png"), im_smaller)
+                rtime = rostime.secs + rostime.nsecs * 1e-9
+                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % rtime) + ".png"), im_smaller)
                 # add newest state for this frame to the csv
                 self.logger.write_state(rostime)
 
             # run inference on im_expanded
             vel_cmd, self.hidden_state = self.single_step_model([im_expanded, self.hidden_state])
             print(vel_cmd)
+
+            ca_req = dji_srv.ObtainControlAuthorityRequest()
+            ca_req.enable_obtain = True
+            ca_res = self.ca_client.call(ca_req)
+            print('\n\nca_res: ', ca_res, '\n\n')
+
+
+            joymode_req = dji_srv.SetJoystickModeRequest()
+            joymode_req.horizontal_mode = dji_srv.SetJoystickModeRequest.HORIZONTAL_VELOCITY
+            joymode_req.vertical_mode = dji_srv.SetJoystickModeRequest.VERTICAL_VELOCITY
+            joymode_req.yaw_mode = dji_srv.SetJoystickModeRequest.YAW_RATE
+            joymode_req.horizontal_coordinate = dji_srv.SetJoystickModeRequest.HORIZONTAL_BODY
+            joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
+            res1 = self.joystick_mode_client.call(joymode_req) 
+            print('joymode response: ', res1)
+
+
             # construct dji velocity command
-            req = dji_msg_from_velocity(vel_cmd)
-            res = self.velocity_service.call(req)
-            print(res)
+            #req = dji_msg_from_velocity(vel_cmd)
+            #res = self.velocity_service.call(req)
+            #print(res)
+
+
+
+
+            joyact_req = dji_srv.JoystickActionRequest()
+            joyact_req.joystickCommand.x = vel_cmd[0][0]
+            joyact_req.joystickCommand.y = vel_cmd[0][1]
+            joyact_req.joystickCommand.z = vel_cmd[0][2]
+            joyact_req.joystickCommand.yaw = vel_cmd[0][3]
+            res2 = self.joystick_action_client.call(joyact_req)
+            print('Joyact response: ', res2)
+
+            #t0 = time.time()
+            #while (time.time() - t0 < 1000):
+            #    res2 = self.joystick_action_client.call(joyact_req)
+            #    print('Joyact response: ', res2)
+
+
 
     # T -8000 (left)
     # P 8000  (center)
