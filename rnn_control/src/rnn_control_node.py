@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import sys
-import time
 
 import PIL
 import PIL.Image
@@ -23,32 +22,32 @@ from video_compression.scripts.logger_example import Logger
 
 
 def dji_msg_from_velocity(vel_cmd):
-    req = dji_srv.FlightTaskControlRequest()
-    req.task = dji_srv.FlightTaskControlRequest.TASK_VELOCITY_AND_YAWRATE_CONTROL
-    req.joystickCommand.x = vel_cmd[0][0]
-    req.joystickCommand.y = vel_cmd[0][1]
-    req.joystickCommand.z = vel_cmd[0][2]
-    req.joystickCommand.yaw = vel_cmd[0][3]
-    req.velocityControlTimeMs = 40
-    return req
+    joyact_req = dji_srv.JoystickActionRequest()
+    joyact_req.joystickCommand.x = vel_cmd[0][0]
+    joyact_req.joystickCommand.y = vel_cmd[0][1]
+    joyact_req.joystickCommand.z = vel_cmd[0][2]
+    joyact_req.joystickCommand.yaw = vel_cmd[0][3]
+    return joyact_req
 
 
 def load_model(model_name: str, checkpoint_name: str):
     # make sure checkpoint includes script dir so script can be run from any file
     checkpoint_path = os.path.join(script_dir, checkpoint_name)
 
-    #last_model = tf.keras.models.load_model(checkpoint_path)
-    #weights_list = last_model.get_weights()
-
     IMAGE_SHAPE = (144, 256, 3)
     inputs = keras.Input(shape=IMAGE_SHAPE)
-
     # normalization layer unssupported by version of tensorflow on drone. Data instead normalized in callback
-
-    x = keras.layers.Conv2D(filters=16, kernel_size=(5, 5), strides=(3, 3), activation='relu')(inputs)
-    x = keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
-    x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
-    x = keras.layers.Conv2D(filters=8, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
+    # old ncp cnn
+    # x = keras.layers.Conv2D(filters=16, kernel_size=(5, 5), strides=(3, 3), activation='relu')(inputs)
+    # x = keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
+    # x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
+    # x = keras.layers.Conv2D(filters=8, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
+    # new ncp cnn
+    x = keras.layers.Conv2D(filters=24, kernel_size=(5, 5), strides=(2, 2), activation='relu')(inputs)
+    x = keras.layers.Conv2D(filters=36, kernel_size=(5, 5), strides=(2, 2), activation='relu')(x)
+    x = keras.layers.Conv2D(filters=48, kernel_size=(5, 5), strides=(2, 2), activation='relu')(x)
+    x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), activation='relu')(x)
+    x = keras.layers.Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
     # fully connected layers
     x = keras.layers.Flatten()(x)
     x = keras.layers.Dense(units=128, activation='linear')(x)
@@ -72,15 +71,15 @@ def load_model(model_name: str, checkpoint_name: str):
         motor_out, output_states = rnn_cell(pre_recurrent_layer, inputs_state)
         single_step_model = tf.keras.Model([inputs, inputs_state], [motor_out, output_states])
 
-        #single_step_model.load_weights(checkpoint_name)
-        single_step_model.set_weights(weights_list[3:])
+        # load weights directly from file. Note need to run truncate_weights.py first
+        single_step_model.load_weights(checkpoint_path, by_name=False)
         return single_step_model, rnn_cell
     else:
         raise ValueError(f"Illegal model name {model_name}")
 
 
 class RNNControlNode:
-    def __init__(self, path: str, log_data: bool):
+    def __init__(self, path: str, log_data: bool, checkpoint_path: str):
         rospy.init_node("rnn_control_node")
         # base path to store all files
         self.path = path
@@ -107,9 +106,7 @@ class RNNControlNode:
         self.mean = [0.41718618, 0.48529191, 0.38133072]
         self.variance = [.057, .05, .061]
         model_name = 'ncp'
-        #checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000900_crop-0.000000_epoch-020_val_loss:0.2127_mse:0.1679_2021:09:20:02:24:31'
-        checkpoint_name = 'rev-0_model-ncp_seq-64_opt-adam_lr-0.000800_crop-0.000000_epoch-049_val_loss:0.2528_mse:0.2151_2021:11:10:19:28:04.hdf5'
-        self.single_step_model, rnn_cell = load_model(model_name, checkpoint_name)
+        self.single_step_model, rnn_cell = load_model(model_name, checkpoint_path)
         self.hidden_state = tf.zeros((1, rnn_cell.state_size))
         print('Loaded Model')
 
@@ -118,8 +115,6 @@ class RNNControlNode:
         self.joystick_mode_client = rospy.ServiceProxy('set_joystick_mode', dji_srv.SetJoystickMode)
         self.joystick_action_client = rospy.ServiceProxy('joystick_action', dji_srv.JoystickAction)
         self.ca_client = rospy.ServiceProxy('obtain_release_control_authority', dji_srv.ObtainControlAuthority)
-
-
 
         rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb)
         rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb)
@@ -186,19 +181,8 @@ class RNNControlNode:
 
 
             # construct dji velocity command
-            #req = dji_msg_from_velocity(vel_cmd)
-            #res = self.velocity_service.call(req)
-            #print(res)
-
-
-
-
-            joyact_req = dji_srv.JoystickActionRequest()
-            joyact_req.joystickCommand.x = vel_cmd[0][0]
-            joyact_req.joystickCommand.y = vel_cmd[0][1]
-            joyact_req.joystickCommand.z = vel_cmd[0][2]
-            joyact_req.joystickCommand.yaw = vel_cmd[0][3]
-            res2 = self.joystick_action_client.call(joyact_req)
+            req = dji_msg_from_velocity(vel_cmd)
+            res2 = self.joystick_action_client.call(req)
             print('Joyact response: ', res2)
 
             #t0 = time.time()
@@ -254,4 +238,6 @@ class RNNControlNode:
 if __name__ == "__main__":
     path_param = rospy.get_param("~path", default="/home/dji/flash/")
     log_data = rospy.get_param("~log_data", default=False)
-    node = RNNControlNode(path_param, log_data)
+    # models/rev-0_model-ncp_seq-64_opt-adam_lr-0.000800_crop-0.000000_epoch-049_val_loss:0.2528_mse:0.2151_2021:11:10:19:28:04.hdf5
+    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/ncp1.hdf5")
+    node = RNNControlNode(path_param, log_data, model_checkpoint)
