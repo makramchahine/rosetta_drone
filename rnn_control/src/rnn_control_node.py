@@ -27,7 +27,7 @@ def dji_msg_from_velocity(vel_cmd):
     joyact_req.joystickCommand.y = vel_cmd[0][1]
     joyact_req.joystickCommand.z = vel_cmd[0][2]
     joyact_req.joystickCommand.yaw = vel_cmd[0][3]
-    return joyact_req
+    return joyact_req.numpy()
 
 
 def load_model(model_name: str, checkpoint_name: str):
@@ -184,7 +184,6 @@ class RNNControlNode:
             req = dji_msg_from_velocity(vel_cmd)
             res2 = self.joystick_action_client.call(req)
             print('Joyact response: ', res2)
-
             #t0 = time.time()
             #while (time.time() - t0 < 1000):
             #    res2 = self.joystick_action_client.call(joyact_req)
@@ -229,7 +228,7 @@ class RNNControlNode:
 
         # only send changed messages to avoid spam
         if self.last_message != message:
-            print(message)
+	    print(message)
             self.last_message = message
 
         self.last_input = current_input
