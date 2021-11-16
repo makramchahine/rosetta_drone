@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+from pathlib import Path
 
 import PIL
 import PIL.Image
@@ -117,6 +118,8 @@ class RNNControlNode:
     def __init__(self, path: str, log_data: bool, model_name: str, checkpoint_path: str):
         rospy.init_node("rnn_control_node")
         # base path to store all files
+        # make path if not exists
+        Path(path).mkdir(parents=True, exist_ok=True)
         self.path = path
 
         # state vars
@@ -174,7 +177,8 @@ class RNNControlNode:
 
                 # make a directory to store pngs
                 self.path_appendix = '%f' % rtime
-                os.mkdir(os.path.join(self.path, self.path_appendix))
+                image_dir = os.path.join(self.path, self.path_appendix)
+                Path(image_dir).mkdir(parents=True, exist_ok=True)
 
             self.video_open = True
         elif self.video_open and self.close_video:
@@ -265,8 +269,8 @@ class RNNControlNode:
 
 
 if __name__ == "__main__":
-    path_param = rospy.get_param("~path", default="/home/dji/flash/")
+    path_param = rospy.get_param("~path", default="~/flash/")
     log_data = rospy.get_param("~log_data", default=False)
-    model_name = rospy.get_param("~model_name", default="lstm")
-    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/ncp1.hdf5")
+    model_name = rospy.get_param("~model_name", default="mixedcfc")
+    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/mixedcfc1.hdf5")
     node = RNNControlNode(path_param, log_data, model_name, model_checkpoint)
