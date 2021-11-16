@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+from pathlib import Path
 
 import PIL
 import PIL.Image
@@ -15,10 +16,11 @@ from sensor_msgs.msg import Image, Joy
 from tensorflow import keras
 
 # import logger from other ros package. Add to system path instead of including proper python lib dependency
+from rnn_control.src.tf_cfc import MixedCfcCell
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(script_dir, "..", ".."))
 from video_compression.scripts.logger_example import Logger
-
 
 
 def dji_msg_from_velocity(vel_cmd):
@@ -33,7 +35,7 @@ def dji_msg_from_velocity(vel_cmd):
 def load_model(model_name: str, checkpoint_name: str):
     # make sure checkpoint includes script dir so script can be run from any file
     checkpoint_path = os.path.join(script_dir, checkpoint_name)
-
+    RNN_SIZE = 128
     IMAGE_SHAPE = (144, 256, 3)
     inputs = keras.Input(shape=IMAGE_SHAPE)
     # normalization layer unssupported by version of tensorflow on drone. Data instead normalized in callback
@@ -55,6 +57,7 @@ def load_model(model_name: str, checkpoint_name: str):
     pre_recurrent_layer = keras.layers.Dropout(rate=DROPOUT)(x)
 
     if model_name == 'ncp':
+
         wiring = kncp.wirings.NCP(
             inter_neurons=18,  # Number of inter neurons
             command_neurons=12,  # Number of command neurons
@@ -65,23 +68,58 @@ def load_model(model_name: str, checkpoint_name: str):
             # command neuron layer
             motor_fanin=6,  # How many incoming synapses has each motor neuron
         )
-        rnn_cell = LTCCell(wiring)
+        rnn_cell = LTCCell(wiring, ode_unfolds=6)
         inputs_state = tf.keras.Input(shape=(rnn_cell.state_size,))
 
         motor_out, output_states = rnn_cell(pre_recurrent_layer, inputs_state)
         single_step_model = tf.keras.Model([inputs, inputs_state], [motor_out, output_states])
 
-        # load weights directly from file. Note need to run truncate_weights.py first
-        single_step_model.load_weights(checkpoint_path, by_name=False)
-        return single_step_model, rnn_cell
+        single_step_model.load_weights(checkpoint_path)
+    elif model_name == 'lstm':
+        rnn_cell = tf.keras.layers.LSTMCell(RNN_SIZE)
+        c_state = tf.keras.Input(shape=(rnn_cell.state_size[0]))
+        h_state = tf.keras.Input(shape=(rnn_cell.state_size[1]))
+
+        output, [next_c, next_h] = rnn_cell(pre_recurrent_layer, [c_state, h_state])
+        output = tf.keras.layers.Dense(units=4, activation='linear')(output)
+        single_step_model = tf.keras.Model([inputs, c_state, h_state], [next_c, next_h, output])
+
+        single_step_model.load_weights(checkpoint_path)
+    elif model_name == 'mixedcfc':
+        CONFIG = {
+            "clipnorm": 1,
+            "size": 128,
+            "backbone_activation": "silu",
+            "backbone_dr": 0.1,
+            "forget_bias": 1.6,
+            "backbone_units": 128,
+            "backbone_layers": 1,
+            "weight_decay": 1e-06,
+            "use_mixed": True,
+        }
+
+        rnn_cell = MixedCfcCell(units=RNN_SIZE, hparams=CONFIG)
+
+        c_state = tf.keras.Input(shape=(rnn_cell.state_size[0]))
+        h_state = tf.keras.Input(shape=(rnn_cell.state_size[1]))
+
+        output, [next_c, next_h] = rnn_cell(pre_recurrent_layer, [c_state, h_state])
+        output = tf.keras.layers.Dense(units=4, activation='linear')(output)
+        single_step_model = tf.keras.Model([inputs, c_state, h_state], [next_c, next_h, output])
+
+        single_step_model.load_weights(checkpoint_path)
     else:
         raise ValueError(f"Illegal model name {model_name}")
 
+    return single_step_model, rnn_cell
+
 
 class RNNControlNode:
-    def __init__(self, path: str, log_data: bool, checkpoint_path: str):
+    def __init__(self, path: str, log_data: bool, model_name: str, checkpoint_path: str):
         rospy.init_node("rnn_control_node")
         # base path to store all files
+        # make path if not exists
+        Path(path).mkdir(parents=True, exist_ok=True)
         self.path = path
 
         # state vars
@@ -102,10 +140,8 @@ class RNNControlNode:
         self.log_data = log_data
         print(f"Logging for this run: {log_data}")
 
-        # TODO: load model name and checkpoint, mean, var from rosparam
         self.mean = [0.41718618, 0.48529191, 0.38133072]
         self.variance = [.057, .05, .061]
-        model_name = 'ncp'
         self.single_step_model, rnn_cell = load_model(model_name, checkpoint_path)
         self.hidden_state = tf.zeros((1, rnn_cell.state_size))
         print('Loaded Model')
@@ -141,7 +177,8 @@ class RNNControlNode:
 
                 # make a directory to store pngs
                 self.path_appendix = '%f' % rtime
-                os.mkdir(os.path.join(self.path, self.path_appendix))
+                image_dir = os.path.join(self.path, self.path_appendix)
+                Path(image_dir).mkdir(parents=True, exist_ok=True)
 
             self.video_open = True
         elif self.video_open and self.close_video:
@@ -169,27 +206,29 @@ class RNNControlNode:
             ca_res = self.ca_client.call(ca_req)
             print('\n\nca_res: ', ca_res, '\n\n')
 
-
             joymode_req = dji_srv.SetJoystickModeRequest()
             joymode_req.horizontal_mode = dji_srv.SetJoystickModeRequest.HORIZONTAL_VELOCITY
             joymode_req.vertical_mode = dji_srv.SetJoystickModeRequest.VERTICAL_VELOCITY
             joymode_req.yaw_mode = dji_srv.SetJoystickModeRequest.YAW_RATE
             joymode_req.horizontal_coordinate = dji_srv.SetJoystickModeRequest.HORIZONTAL_BODY
             joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
-            res1 = self.joystick_mode_client.call(joymode_req) 
+            res1 = self.joystick_mode_client.call(joymode_req)
             print('joymode response: ', res1)
-
 
             # construct dji velocity command
             req = dji_msg_from_velocity(vel_cmd)
             res2 = self.joystick_action_client.call(req)
             print('Joyact response: ', res2)
+<<<<<<< HEAD
             #t0 = time.time()
             #while (time.time() - t0 < 1000):
+=======
+
+            # t0 = time.time()
+            # while (time.time() - t0 < 1000):
+>>>>>>> 94bd8763be5ce96678bcf67aa0a1e6faf3a041df
             #    res2 = self.joystick_action_client.call(joyact_req)
             #    print('Joyact response: ', res2)
-
-
 
     # T -8000 (left)
     # P 8000  (center)
@@ -235,8 +274,8 @@ class RNNControlNode:
 
 
 if __name__ == "__main__":
-    path_param = rospy.get_param("~path", default="/home/dji/flash/")
+    path_param = rospy.get_param("~path", default="~/flash/")
     log_data = rospy.get_param("~log_data", default=False)
-    # models/rev-0_model-ncp_seq-64_opt-adam_lr-0.000800_crop-0.000000_epoch-049_val_loss:0.2528_mse:0.2151_2021:11:10:19:28:04.hdf5
-    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/ncp1.hdf5")
-    node = RNNControlNode(path_param, log_data, model_checkpoint)
+    model_name = rospy.get_param("~model_name", default="mixedcfc")
+    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/mixedcfc1.hdf5")
+    node = RNNControlNode(path_param, log_data, model_name, model_checkpoint)
