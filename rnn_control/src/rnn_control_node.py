@@ -39,24 +39,26 @@ def load_model(model_name: str, checkpoint_name: str):
     IMAGE_SHAPE = (144, 256, 3)
     inputs = keras.Input(shape=IMAGE_SHAPE)
     # normalization layer unssupported by version of tensorflow on drone. Data instead normalized in callback
-    # old ncp cnn
-    # x = keras.layers.Conv2D(filters=16, kernel_size=(5, 5), strides=(3, 3), activation='relu')(inputs)
-    # x = keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
-    # x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
-    # x = keras.layers.Conv2D(filters=8, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
-    # new ncp cnn
-    x = keras.layers.Conv2D(filters=24, kernel_size=(5, 5), strides=(2, 2), activation='relu')(inputs)
-    x = keras.layers.Conv2D(filters=36, kernel_size=(5, 5), strides=(2, 2), activation='relu')(x)
-    x = keras.layers.Conv2D(filters=48, kernel_size=(5, 5), strides=(2, 2), activation='relu')(x)
-    x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), activation='relu')(x)
-    x = keras.layers.Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
+    if model_name == "ncp_old":
+        # old ncp cnn
+        x = keras.layers.Conv2D(filters=16, kernel_size=(5, 5), strides=(3, 3), activation='relu')(inputs)
+        x = keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
+        x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
+        x = keras.layers.Conv2D(filters=8, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
+    else:
+        # new ncp cnn
+        x = keras.layers.Conv2D(filters=24, kernel_size=(5, 5), strides=(2, 2), activation='relu')(inputs)
+        x = keras.layers.Conv2D(filters=36, kernel_size=(5, 5), strides=(2, 2), activation='relu')(x)
+        x = keras.layers.Conv2D(filters=48, kernel_size=(5, 5), strides=(2, 2), activation='relu')(x)
+        x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), activation='relu')(x)
+        x = keras.layers.Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
     # fully connected layers
     x = keras.layers.Flatten()(x)
     x = keras.layers.Dense(units=128, activation='linear')(x)
     DROPOUT = 0.0
     pre_recurrent_layer = keras.layers.Dropout(rate=DROPOUT)(x)
 
-    if model_name == 'ncp':
+    if model_name.startswith("ncp"):
 
         wiring = kncp.wirings.NCP(
             inter_neurons=18,  # Number of inter neurons
@@ -276,6 +278,6 @@ class RNNControlNode:
 if __name__ == "__main__":
     path_param = rospy.get_param("~path", default="~/flash/")
     log_data = rospy.get_param("~log_data", default=False)
-    model_name = rospy.get_param("~model_name", default="lstm")
-    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/lstm1.hdf5")
+    model_name = rospy.get_param("~model_name", default="ncp_old")
+    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/ncpold.hdf5")
     node = RNNControlNode(path_param, log_data, model_name, model_checkpoint)
