@@ -203,7 +203,7 @@ class RNNControlNode:
 
             # run inference on im_expanded
             vel_cmd, self.hidden_state = self.single_step_model([im_expanded, *self.hidden_state])
-            print(vel_cmd)
+            print(vel_cmd.numpy())
 
             ca_req = dji_srv.ObtainControlAuthorityRequest()
             ca_req.enable_obtain = True
