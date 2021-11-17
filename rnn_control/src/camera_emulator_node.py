@@ -78,15 +78,13 @@ def publish_camera_messages():
     rospy.init_node("camera_emulator")
 
     # setup node state
-    #default_directory = "/home/dji/data/1628628264.261048"
-    default_directory = "/home/dji/data/summer/1628106314.97"
-    directory = rospy.get_param("~image_directory", default=default_directory)
+    directory = rospy.get_param("image_directory")
     contents = os.listdir(directory)
     contents = [os.path.join(directory, c) for c in contents if 'png' in c]
     contents.sort()
     last_idx = None
     # bridge = CvBridge()
-    use_data_rate = rospy.get_param("~use_data_rate", default=False)
+    use_data_rate = rospy.get_param("use_data_rate", default=False)
     if use_data_rate:
         rate = rospy.Rate(get_avg_rate(im_list=contents))
     else:
