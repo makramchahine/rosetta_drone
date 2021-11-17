@@ -1,5 +1,6 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
+
 
 # COPIED FROM https://github.com/raminmh/CfC
 
@@ -9,6 +10,11 @@ import numpy as np
 
 def lecun_tanh(x):
     return 1.7159 * tf.nn.tanh(0.666 * x)
+
+
+# PATRICK EDIT: hardcoded silu since it doesn't exist in our version of tensorflow
+def silu(x):
+    return x * tf.nn.sigmoid(x)
 
 
 class CfcCell(tf.keras.layers.Layer):
@@ -27,7 +33,7 @@ class CfcCell(tf.keras.layers.Layer):
             input_dim = input_shape[-1]
 
         if self.hparams["backbone_activation"] == "silu":
-            backbone_activation = tf.nn.silu
+            backbone_activation = silu
         elif self.hparams["backbone_activation"] == "relu":
             backbone_activation = tf.nn.relu
         elif self.hparams["backbone_activation"] == "tanh":
@@ -48,7 +54,6 @@ class CfcCell(tf.keras.layers.Layer):
 
         self.backbone = []
         for i in range(self.hparams["backbone_layers"]):
-
             self.backbone.append(
                 tf.keras.layers.Dense(
                     self.hparams["backbone_units"],
@@ -118,10 +123,10 @@ class CfcCell(tf.keras.layers.Layer):
         if self._minimal:
             # Solution
             new_hidden = (
-                -self.A
-                * tf.math.exp(-t * (tf.math.abs(self.w_tau) + tf.math.abs(ff1)))
-                * ff1
-                + self.A
+                    -self.A
+                    * tf.math.exp(-t * (tf.math.abs(self.w_tau) + tf.math.abs(ff1)))
+                    * ff1
+                    + self.A
             )
         else:
             # Cfc
@@ -188,9 +193,9 @@ class MixedCfcCell(tf.keras.layers.Layer):
             inputs = inputs[0]
 
         z = (
-            tf.matmul(inputs, self.input_kernel)
-            + tf.matmul(ode_state, self.recurrent_kernel)
-            + self.bias
+                tf.matmul(inputs, self.input_kernel)
+                + tf.matmul(ode_state, self.recurrent_kernel)
+                + self.bias
         )
         i, ig, fg, og = tf.split(z, 4, axis=-1)
 
@@ -393,9 +398,9 @@ class LTCCell(tf.keras.layers.AbstractRNNCell):
             w_denominator = tf.reduce_sum(w_activation, axis=1) + w_denominator_sensory
 
             numerator = (
-                cm_t * v_pre
-                + self._params["gleak"] * self._params["vleak"]
-                + w_numerator
+                    cm_t * v_pre
+                    + self._params["gleak"] * self._params["vleak"]
+                    + w_numerator
             )
             denominator = cm_t + self._params["gleak"] + w_denominator
 
