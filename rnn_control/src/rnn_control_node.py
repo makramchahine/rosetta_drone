@@ -299,5 +299,5 @@ if __name__ == "__main__":
     path_param = rospy.get_param("~path", default="~/flash/")
     log_data = rospy.get_param("~log_data", default=False)
     model_name = rospy.get_param("~model_name", default="mixedcfc")
-    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/mixedcfc1.hdf5")
+    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/mixedcfc.hdf5")
     node = RNNControlNode(path_param, log_data, model_name, model_checkpoint)
