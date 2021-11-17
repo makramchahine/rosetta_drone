@@ -28,7 +28,7 @@ def dji_msg_from_velocity(vel_cmd):
     joyact_req.joystickCommand.x = vel_cmd[0][0]
     joyact_req.joystickCommand.y = vel_cmd[0][1]
     joyact_req.joystickCommand.z = vel_cmd[0][2]
-    joyact_req.joystickCommand.yaw = vel_cmd[0][3]
+    joyact_req.joystickCommand.yaw = vel_cmd[0][3]*180/np.pi
     return joyact_req
 
 
