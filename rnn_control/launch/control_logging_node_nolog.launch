@@ -1,0 +1,5 @@
+<launch>
+    <param name="log_data" type="bool" value="false"/>
+    <param name="path" type="str" value="/home/dji/flash/"/>
+    <node pkg="rnn_control" type="rnn_control_node.py" name="rnn_control_node" output="screen"/>
+</launch>
