@@ -75,6 +75,7 @@ def load_model(model_name: str, checkpoint_name: str):
         single_step_model = tf.keras.Model([inputs, inputs_state], [motor_out, output_states])
 
         single_step_model.load_weights(checkpoint_path)
+        hidden_state = [tf.zeros((1, rnn_cell.state_size))]
     elif model_name == 'lstm':
         rnn_cell = tf.keras.layers.LSTMCell(RNN_SIZE)
         c_state = tf.keras.Input(shape=(rnn_cell.state_size[0]))
@@ -85,6 +86,8 @@ def load_model(model_name: str, checkpoint_name: str):
         single_step_model = tf.keras.Model([inputs, c_state, h_state], [next_c, next_h, output])
 
         single_step_model.load_weights(checkpoint_path)
+        # hidden c, hidden h
+        hidden_state = [tf.zeros((1, rnn_cell.state_size[0])), tf.zeros((1, rnn_cell.state_size[1]))]
     elif model_name == 'mixedcfc':
         CONFIG = {
             "clipnorm": 1,
@@ -108,10 +111,12 @@ def load_model(model_name: str, checkpoint_name: str):
         single_step_model = tf.keras.Model([inputs, c_state, h_state], [next_c, next_h, output])
 
         single_step_model.load_weights(checkpoint_path)
+        # hidden c, hidden h
+        hidden_state = [tf.zeros((1, rnn_cell.state_size[0])), tf.zeros((1, rnn_cell.state_size[1]))]
     else:
         raise ValueError(f"Illegal model name {model_name}")
 
-    return single_step_model, rnn_cell
+    return single_step_model, hidden_state
 
 
 class RNNControlNode:
@@ -142,8 +147,7 @@ class RNNControlNode:
 
         self.mean = [0.41718618, 0.48529191, 0.38133072]
         self.variance = [.057, .05, .061]
-        self.single_step_model, rnn_cell = load_model(model_name, checkpoint_path)
-        self.hidden_state = tf.zeros((1, rnn_cell.state_size))
+        self.single_step_model, self.hidden_state = load_model(model_name, checkpoint_path)
         print('Loaded Model')
 
         # init ros
@@ -198,7 +202,7 @@ class RNNControlNode:
                 self.logger.write_state(rostime)
 
             # run inference on im_expanded
-            vel_cmd, self.hidden_state = self.single_step_model([im_expanded, self.hidden_state])
+            vel_cmd, self.hidden_state = self.single_step_model([im_expanded, *self.hidden_state])
             print(vel_cmd)
 
             ca_req = dji_srv.ObtainControlAuthorityRequest()
