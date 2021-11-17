@@ -16,7 +16,7 @@ from sensor_msgs.msg import Image, Joy
 from tensorflow import keras
 
 # import logger from other ros package. Add to system path instead of including proper python lib dependency
-from rnn_control.src.tf_cfc import MixedCfcCell
+from tf_cfc import MixedCfcCell
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(script_dir, "..", ".."))
@@ -29,7 +29,7 @@ def dji_msg_from_velocity(vel_cmd):
     joyact_req.joystickCommand.y = vel_cmd[0][1]
     joyact_req.joystickCommand.z = vel_cmd[0][2]
     joyact_req.joystickCommand.yaw = vel_cmd[0][3]
-    return joyact_req.numpy()
+    return joyact_req
 
 
 def load_model(model_name: str, checkpoint_name: str):
@@ -213,20 +213,16 @@ class RNNControlNode:
             joymode_req.horizontal_coordinate = dji_srv.SetJoystickModeRequest.HORIZONTAL_BODY
             joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
             res1 = self.joystick_mode_client.call(joymode_req)
-            print('joymode response: ', res1)
+           # print('joymode response: ', res1)
 
             # construct dji velocity command
             req = dji_msg_from_velocity(vel_cmd)
             res2 = self.joystick_action_client.call(req)
-            print('Joyact response: ', res2)
-<<<<<<< HEAD
+            #print('Joyact response: ', res2)
             #t0 = time.time()
             #while (time.time() - t0 < 1000):
-=======
-
             # t0 = time.time()
             # while (time.time() - t0 < 1000):
->>>>>>> 94bd8763be5ce96678bcf67aa0a1e6faf3a041df
             #    res2 = self.joystick_action_client.call(joyact_req)
             #    print('Joyact response: ', res2)
 
@@ -267,7 +263,7 @@ class RNNControlNode:
 
         # only send changed messages to avoid spam
         if self.last_message != message:
-	    print(message)
+            print(message)
             self.last_message = message
 
         self.last_input = current_input
@@ -276,6 +272,6 @@ class RNNControlNode:
 if __name__ == "__main__":
     path_param = rospy.get_param("~path", default="~/flash/")
     log_data = rospy.get_param("~log_data", default=False)
-    model_name = rospy.get_param("~model_name", default="mixedcfc")
-    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/mixedcfc1.hdf5")
+    model_name = rospy.get_param("~model_name", default="lstm")
+    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/lstm1.hdf5")
     node = RNNControlNode(path_param, log_data, model_name, model_checkpoint)
