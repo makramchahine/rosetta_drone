@@ -89,7 +89,7 @@ class RNNControlNode:
 
 
         joyact_req = dji_srv.JoystickActionRequest()
-        joyact_req.joystickCommand.x = 1
+        joyact_req.joystickCommand.x = 0
         joyact_req.joystickCommand.y = 0
         joyact_req.joystickCommand.z = 0
         joyact_req.joystickCommand.yaw = .2

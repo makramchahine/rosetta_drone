@@ -59,7 +59,8 @@ def load_model(model_name: str, checkpoint_name: str):
     pre_recurrent_layer = keras.layers.Dropout(rate=DROPOUT)(x)
 
     if model_name.startswith("ncp"):
-
+        assert model_name == "ncp" or model_name == "ncp_old", \
+            f"Only legal ncp model names are 'ncp' and 'ncp_old', got {model_name}"
         wiring = kncp.wirings.NCP(
             inter_neurons=18,  # Number of inter neurons
             command_neurons=12,  # Number of command neurons
@@ -297,6 +298,6 @@ class RNNControlNode:
 if __name__ == "__main__":
     path_param = rospy.get_param("~path", default="~/flash/")
     log_data = rospy.get_param("~log_data", default=False)
-    model_name = rospy.get_param("~model_name", default="lstm")
-    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/lstm1.hdf5")
+    model_name = rospy.get_param("~model_name", default="ncp_old")
+    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/ncp_old.hdf5")
     node = RNNControlNode(path_param, log_data, model_name, model_checkpoint)
