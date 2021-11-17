@@ -209,7 +209,7 @@ class RNNControlNode:
             if self.log_data:
                 rostime = msg.header.stamp  # rospy.Time.now()
                 rtime = rostime.secs + rostime.nsecs * 1e-9
-                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % rtime) + ".png"), im_network)
+                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % rtime) + ".png"), im_smaller)
                 # add newest state for this frame to the csv
                 self.logger.write_state(rostime)
 
