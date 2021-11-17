@@ -178,11 +178,11 @@ class RNNControlNode:
         # resize image
         im = PIL.Image.fromarray(im_np)
         im_smaller = np.array(im.resize((256, 144), resample=PIL.Image.BILINEAR))
-        im_smaller = im_smaller / 255
-        im_smaller = im_smaller - self.mean
-        im_smaller = im_smaller / self.variance
-        im_smaller = np.expand_dims(im_smaller, 0)
-        im_expanded = np.expand_dims(im_smaller, 0)
+        im_network = im_smaller / 255
+        im_network = im_network - self.mean
+        im_network = im_network / self.variance
+        im_network = np.expand_dims(im_network, 0)
+        im_expanded = np.expand_dims(im_network, 0)
 
         if not self.video_open and not self.close_video:
             # start generating csv
@@ -209,7 +209,7 @@ class RNNControlNode:
             if self.log_data:
                 rostime = msg.header.stamp  # rospy.Time.now()
                 rtime = rostime.secs + rostime.nsecs * 1e-9
-                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % rtime) + ".png"), im_smaller)
+                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % rtime) + ".png"), im_network)
                 # add newest state for this frame to the csv
                 self.logger.write_state(rostime)
 
