@@ -77,7 +77,7 @@ def load_model(model_name: str, checkpoint_name: str):
         single_step_model = tf.keras.Model([inputs, inputs_state], [motor_out, output_states])
 
         single_step_model.load_weights(checkpoint_path)
-        hidden_state = [tf.zeros((1, rnn_cell.state_size))]
+        hidden_state = (tf.zeros((1, rnn_cell.state_size)))
     elif model_name == 'lstm':
         rnn_cell = tf.keras.layers.LSTMCell(RNN_SIZE)
         c_state = tf.keras.Input(shape=(rnn_cell.state_size[0]))
@@ -89,7 +89,7 @@ def load_model(model_name: str, checkpoint_name: str):
 
         single_step_model.load_weights(checkpoint_path)
         # hidden c, hidden h
-        hidden_state = [tf.zeros((1, rnn_cell.state_size[0])), tf.zeros((1, rnn_cell.state_size[1]))]
+        hidden_state = (tf.zeros((1, rnn_cell.state_size[0])), tf.zeros((1, rnn_cell.state_size[1])))
     elif model_name == 'mixedcfc':
         CONFIG = {
             "clipnorm": 1,
@@ -114,7 +114,7 @@ def load_model(model_name: str, checkpoint_name: str):
 
         single_step_model.load_weights(checkpoint_path)
         # hidden c, hidden h
-        hidden_state = [tf.zeros((1, rnn_cell.state_size[0])), tf.zeros((1, rnn_cell.state_size[1]))]
+        hidden_state = (tf.zeros((1, rnn_cell.state_size[0])), tf.zeros((1, rnn_cell.state_size[1])))
     else:
         raise ValueError(f"Illegal model name {model_name}")
 
@@ -149,7 +149,16 @@ class RNNControlNode:
 
         self.mean = [0.41718618, 0.48529191, 0.38133072]
         self.variance = [.057, .05, .061]
-        self.single_step_model, self.hidden_state = load_model(model_name, checkpoint_path)
+
+        if model_name.startswith("ncp"):
+            self.single_step_model, (self.hidden_state) = load_model(model_name, checkpoint_path)
+        elif model_name == "lstm":
+            self.single_step_model, (self.hidden_c, self.hidden_h) = load_model(model_name, checkpoint_path)
+        elif model_name == "mixedcfc":
+            self.single_step_model, (self.hidden_c, self.hidden_h) = load_model(model_name, checkpoint_path)
+        else:
+            raise ValueError(f"Illegal model name {model_name}")
+
         print('Loaded Model')
 
         # init ros
@@ -204,7 +213,17 @@ class RNNControlNode:
                 self.logger.write_state(rostime)
 
             # run inference on im_expanded
-            vel_cmd, self.hidden_state = self.single_step_model([im_expanded, *self.hidden_state])
+            if model_name.startswith("ncp"):
+                vel_cmd, self.hidden_state = self.single_step_model([im_expanded, self.hidden_state])
+            elif model_name == "lstm":
+                self.hidden_c, self.hidden_h, vel_cmd = self.single_step_model(
+                    [im_expanded, self.hidden_c, self.hidden_h])
+            elif model_name == "mixedcfc":
+                self.hidden_c, self.hidden_h, vel_cmd = self.single_step_model(
+                    [im_expanded, self.hidden_c, self.hidden_h])
+            else:
+                raise ValueError(f"Illegal model name {model_name}")
+
             print(vel_cmd.numpy())
 
             ca_req = dji_srv.ObtainControlAuthorityRequest()
@@ -219,14 +238,14 @@ class RNNControlNode:
             joymode_req.horizontal_coordinate = dji_srv.SetJoystickModeRequest.HORIZONTAL_BODY
             joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
             res1 = self.joystick_mode_client.call(joymode_req)
-           # print('joymode response: ', res1)
+            # print('joymode response: ', res1)
 
             # construct dji velocity command
             req = dji_msg_from_velocity(vel_cmd)
             res2 = self.joystick_action_client.call(req)
-            #print('Joyact response: ', res2)
-            #t0 = time.time()
-            #while (time.time() - t0 < 1000):
+            # print('Joyact response: ', res2)
+            # t0 = time.time()
+            # while (time.time() - t0 < 1000):
             # t0 = time.time()
             # while (time.time() - t0 < 1000):
             #    res2 = self.joystick_action_client.call(joyact_req)
@@ -278,6 +297,6 @@ class RNNControlNode:
 if __name__ == "__main__":
     path_param = rospy.get_param("~path", default="~/flash/")
     log_data = rospy.get_param("~log_data", default=False)
-    model_name = rospy.get_param("~model_name", default="ncp_old")
-    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/ncpold.hdf5")
+    model_name = rospy.get_param("~model_name", default="lstm")
+    model_checkpoint = rospy.get_param("~checkpoint_path", default="models/lstm1.hdf5")
     node = RNNControlNode(path_param, log_data, model_name, model_checkpoint)
