@@ -95,7 +95,7 @@ def load_model(model_name: str, checkpoint_name: str):
         CONFIG = {
             "clipnorm": 1,
             "size": 128,
-            "backbone_activation": "silu",
+            "backbone_activation": "relu",
             "backbone_dr": 0.1,
             "forget_bias": 1.6,
             "backbone_units": 128,
