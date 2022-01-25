@@ -1,0 +1,3 @@
+[submodule "deepdrone"]
+	path = deepdrone
+	url = git@github.com:mit-drl/deepdrone.git
