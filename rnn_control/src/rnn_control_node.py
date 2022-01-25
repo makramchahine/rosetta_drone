@@ -17,6 +17,7 @@ from sensor_msgs.msg import Image, Joy
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(script_dir, "..", ".."))
 from video_compression.scripts.logger_example import Logger
+sys.path.append(os.path.join(script_dir, "..", "..", "deepdrone"))
 from deepdrone.keras_models import load_model_from_weights, NCPParams, LSTMParams, CTRNNParams
 
 
@@ -193,8 +194,8 @@ class RNNControlNode:
 
 
 if __name__ == "__main__":
-    path_param = rospy.get_param("path", default="~/flash")
+    path = rospy.get_param("path", default="~/flash")
     log_data = rospy.get_param("log_data", default=False)
-    model_name = rospy.get_param("model_name", default="ncp_old")
-    model_checkpoint = rospy.get_param("checkpoint_path", default="models/ncp_old.hdf5")
-    node = RNNControlNode(path_param, log_data, model_name, model_checkpoint)
+    params_path = rospy.get_param("params_path", default="models/online_1/params.json")
+    checkpoint_path = rospy.get_param("checkpoint_path", default="models/online_1/rev-0_model-lstm_seq-64_opt-adam_lr-0.000290_crop-0.000000_epoch-090_val_loss:0.1936_mse:0.0282_2022:01:22:03:19:54.hdf5")
+    node = RNNControlNode(path=path, log_data=log_data, params_path=params_path, checkpoint_path=checkpoint_path)
