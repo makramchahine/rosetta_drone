@@ -1,27 +1,23 @@
 #!/usr/bin/env python3
+import json
 import os
 import sys
 from pathlib import Path
+from typing import Union
 
 import PIL
 import PIL.Image
 import cv2
 import dji_osdk_ros.srv as dji_srv
-import kerasncp as kncp
 import numpy as np
 import rospy
-import tensorflow as tf
-from kerasncp.tf import LTCCell
 from sensor_msgs.msg import Image, Joy
-from tensorflow import keras
 
-# import logger from other ros package. Add to system path instead of including proper python lib dependency
-from deepdrone.keras_models import load_model_from_weights
-from tf_cfc import MixedCfcCell
-
+# import logger and deepdrone from other ros package. Add to system path instead of including proper python lib dependency
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(script_dir, "..", ".."))
 from video_compression.scripts.logger_example import Logger
+from deepdrone.keras_models import load_model_from_weights, NCPParams, LSTMParams, CTRNNParams
 
 
 def dji_msg_from_velocity(vel_cmd):
@@ -29,7 +25,7 @@ def dji_msg_from_velocity(vel_cmd):
     joyact_req.joystickCommand.x = vel_cmd[0][0]
     joyact_req.joystickCommand.y = vel_cmd[0][1]
     joyact_req.joystickCommand.z = vel_cmd[0][2]
-    joyact_req.joystickCommand.yaw = vel_cmd[0][3]*180/np.pi
+    joyact_req.joystickCommand.yaw = vel_cmd[0][3] * 180 / np.pi
     return joyact_req
 
 
@@ -62,8 +58,12 @@ class RNNControlNode:
         self.mean = [0.41718618, 0.48529191, 0.38133072]
         self.variance = [.057, .05, .061]
 
+        # get model params and load model
+        with open(params_path, "r") as f:
+            data = json.loads(f.read())
+            model_params: Union[NCPParams, LSTMParams, CTRNNParams] = eval(data[os.path.basename(checkpoint_path)])
 
-        self.single_step_model = load_model_from_weights()
+        self.single_step_model = load_model_from_weights(model_params, checkpoint_path, single_step=True)
         self.hiddens = [np.zeros((1, input_shape[1])) for input_shape in self.single_step_model.input_shape[1:]]
         print('Loaded Model')
 
@@ -127,7 +127,7 @@ class RNNControlNode:
             ca_req = dji_srv.ObtainControlAuthorityRequest()
             ca_req.enable_obtain = True
             ca_res = self.ca_client.call(ca_req)
-           # print('\n\nca_res: ', ca_res, '\n\n')
+            # print('\n\nca_res: ', ca_res, '\n\n')
 
             joymode_req = dji_srv.SetJoystickModeRequest()
             joymode_req.horizontal_mode = dji_srv.SetJoystickModeRequest.HORIZONTAL_VELOCITY
