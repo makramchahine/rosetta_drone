@@ -64,6 +64,7 @@ class RNNControlNode:
             data = json.loads(f.read())
             model_params: Union[NCPParams, LSTMParams, CTRNNParams] = eval(data[os.path.basename(checkpoint_path)])
 
+        model_params.no_norm_layer = True
         self.single_step_model = load_model_from_weights(model_params, checkpoint_path, single_step=True)
         self.hiddens = [np.zeros((1, input_shape[1])) for input_shape in self.single_step_model.input_shape[1:]]
         print('Loaded Model')
@@ -197,5 +198,5 @@ if __name__ == "__main__":
     path = rospy.get_param("path", default="~/flash")
     log_data = rospy.get_param("log_data", default=False)
     params_path = rospy.get_param("params_path", default="models/online_1/params.json")
-    checkpoint_path = rospy.get_param("checkpoint_path", default="models/online_1/rev-0_model-lstm_seq-64_opt-adam_lr-0.000290_crop-0.000000_epoch-090_val_loss:0.1936_mse:0.0282_2022:01:22:03:19:54.hdf5")
+    checkpoint_path = rospy.get_param("checkpoint_path")
     node = RNNControlNode(path=path, log_data=log_data, params_path=params_path, checkpoint_path=checkpoint_path)
