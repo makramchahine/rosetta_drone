@@ -138,7 +138,7 @@ class RNNControlNode:
             joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
             res1 = self.joystick_mode_client.call(joymode_req)
 
-            self.logger.vel_cmd = vel_cmd.numpy()[0]
+            self.logger.vel_cmd = vel_cmd[0]
             # construct dji velocity command
             req = dji_msg_from_velocity(vel_cmd)
             res2 = self.joystick_action_client.call(req)
