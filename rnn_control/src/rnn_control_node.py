@@ -60,8 +60,10 @@ class RNNControlNode:
         self.variance = [.057, .05, .061]
 
         # get model params and load model
-        # make params path relative
+        # make params path and checkpoint path relative
         params_path = os.path.join(SCRIPT_DIR, params_path)
+        checkpoint_path = os.path.join(SCRIPT_DIR, checkpoint_path)
+
         with open(params_path, "r") as f:
             data = json.loads(f.read())
             model_params: Union[NCPParams, LSTMParams, CTRNNParams] = eval(data[os.path.basename(checkpoint_path)])
