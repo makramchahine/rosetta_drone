@@ -81,8 +81,8 @@ class RNNControlNode:
         self.joystick_action_client = rospy.ServiceProxy('joystick_action', dji_srv.JoystickAction)
         self.ca_client = rospy.ServiceProxy('obtain_release_control_authority', dji_srv.ObtainControlAuthority)
 
-        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb)
-        rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb)
+        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb, queue_size=1)
+        rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb, queue_size=1)
         print("Finished initialization of model and ros setup")
         rospy.spin()
 
