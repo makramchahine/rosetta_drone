@@ -17,6 +17,7 @@ from sensor_msgs.msg import Image, Joy
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
 from video_compression.scripts.logger_example import Logger
+
 sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "deepdrone"))
 from deepdrone.keras_models import load_model_from_weights, NCPParams, LSTMParams, CTRNNParams
 
@@ -88,11 +89,14 @@ class RNNControlNode:
         im_np = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
         # resize image
         im = PIL.Image.fromarray(im_np)
+        # shape: (h, w, c)
+        # note PIL resize is width, height, whereas channel dim is height, widdth
         im_smaller = np.array(im.resize((256, 144), resample=PIL.Image.BILINEAR))
         im_network = im_smaller / 255
         im_network = im_network - self.mean
         im_network = im_network / self.variance
-        im_network = np.expand_dims(im_network, 0)
+        # shape: (batch=1, h, w, c)
+        im_network = np.expand_dims(im_network, 0) # add batch dimension
 
         if not self.video_open and not self.close_video:
             # start generating csv
@@ -117,9 +121,7 @@ class RNNControlNode:
             self.video_open = False
 
         if self.video_open:
-
-
-            # run inference on im_expanded
+            # run inference on im_network
             out = self.single_step_model.predict([im_network, *self.hiddens])
             vel_cmd = out[0]
             self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
@@ -136,20 +138,11 @@ class RNNControlNode:
             joymode_req.horizontal_coordinate = dji_srv.SetJoystickModeRequest.HORIZONTAL_BODY
             joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
             res1 = self.joystick_mode_client.call(joymode_req)
-            # print('joymode response: ', res1)
 
             self.logger.vel_cmd = vel_cmd.numpy()[0]
             # construct dji velocity command
             req = dji_msg_from_velocity(vel_cmd)
             res2 = self.joystick_action_client.call(req)
-            # print('Joyact response: ', res2)
-            # t0 = time.time()
-            # while (time.time() - t0 < 1000):
-            # t0 = time.time()
-            # while (time.time() - t0 < 1000):
-            #    res2 = self.joystick_action_client.call(joyact_req)
-            #    print('Joyact response: ', res2)
-
 
             if self.log_data:
                 rostime = msg.header.stamp  # rospy.Time.now()
@@ -206,4 +199,5 @@ if __name__ == "__main__":
     log_data_ros = rospy.get_param("log_data", default=False)
     params_path_ros = rospy.get_param("params_path", default="models/online_1/params.json")
     checkpoint_path_ros = rospy.get_param("checkpoint_path")
-    node = RNNControlNode(path=path_ros, log_data=log_data_ros, params_path=params_path_ros, checkpoint_path=checkpoint_path_ros)
+    node = RNNControlNode(path=path_ros, log_data=log_data_ros, params_path=params_path_ros,
+                          checkpoint_path=checkpoint_path_ros)
