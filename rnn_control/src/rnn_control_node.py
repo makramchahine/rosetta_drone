@@ -14,10 +14,10 @@ import rospy
 from sensor_msgs.msg import Image, Joy
 
 # import logger and deepdrone from other ros package. Add to system path instead of including proper python lib dependency
-script_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(script_dir, "..", ".."))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
 from video_compression.scripts.logger_example import Logger
-sys.path.append(os.path.join(script_dir, "..", "..", "deepdrone"))
+sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "deepdrone"))
 from deepdrone.keras_models import load_model_from_weights, NCPParams, LSTMParams, CTRNNParams
 
 
@@ -60,6 +60,8 @@ class RNNControlNode:
         self.variance = [.057, .05, .061]
 
         # get model params and load model
+        # make params path relative
+        params_path = os.path.join(SCRIPT_DIR, params_path)
         with open(params_path, "r") as f:
             data = json.loads(f.read())
             model_params: Union[NCPParams, LSTMParams, CTRNNParams] = eval(data[os.path.basename(checkpoint_path)])
@@ -195,8 +197,8 @@ class RNNControlNode:
 
 
 if __name__ == "__main__":
-    path = rospy.get_param("path", default="~/flash")
-    log_data = rospy.get_param("log_data", default=False)
-    params_path = rospy.get_param("params_path", default="models/online_1/params.json")
-    checkpoint_path = rospy.get_param("checkpoint_path")
-    node = RNNControlNode(path=path, log_data=log_data, params_path=params_path, checkpoint_path=checkpoint_path)
+    path_ros = rospy.get_param("path", default="~/flash")
+    log_data_ros = rospy.get_param("log_data", default=False)
+    params_path_ros = rospy.get_param("params_path", default="models/online_1/params.json")
+    checkpoint_path_ros = rospy.get_param("checkpoint_path")
+    node = RNNControlNode(path=path_ros, log_data=log_data_ros, params_path=params_path_ros, checkpoint_path=checkpoint_path_ros)
