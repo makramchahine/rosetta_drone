@@ -86,7 +86,7 @@ class Logger:
         gimbal_y = gimbal_msg.vector.y
         gimbal_z = gimbal_msg.vector.z
 
-        csv_row = self.fmt % (time_total, time_secs, time_nsecs, battery_voltage,battery_current,battery_percentage, acc_x,acc_y,acc_z,ang_vel_x,ang_vel_y,ang_vel_z,att_x,att_y,att_z,att_w,gps_health,lat,lng,gps_alt,height_above_takeoff,local_x,local_y,local_z,rc0,rc1,rc2,rc3,rc4,rc5,vx,vy,vz,gimbal_x,gimbal_y,gimbal_z)
+        csv_row = self.fmt % (time_total, time_secs, time_nsecs, battery_voltage,battery_current,battery_percentage, acc_x,acc_y,acc_z,ang_vel_x,ang_vel_y,ang_vel_z,att_x,att_y,att_z,att_w,gps_health,lat,lng,gps_alt,height_above_takeoff,local_x,local_y,local_z,rc0,rc1,rc2,rc3,rc4,rc5,vx,vy,vz,gimbal_x,gimbal_y,gimbal_z,self.vel_cmd[0], self.vel_cmd[1], self.vel_cmd[2], self.vel_cmd[3])
 
         self.write_file.write(csv_row)
 
@@ -119,6 +119,8 @@ class Logger:
         rospy.Subscriber('/dji_osdk_ros/vo_position', VOPosition, self.vo_position_cb)
         rospy.Subscriber('/dji_osdk_ros/gimbal_angle', Vector3Stamped, self.gimbal_cb)
 
+        #self.vel_cmd = None
+        self.vel_cmd = [0,0,0,0]
         self.battery_state_msg = None
         self.acc_ground_fused_msg = None
         self.angular_vel_msg = None
@@ -133,7 +135,7 @@ class Logger:
         self.vo_position_msg = None
         self.gimbal_msg = None
 
-        csv_fields = ['time_total','time_secs','time_nsecs','battery_voltage','battery_current','battery_percentage', 'acc_x','acc_y','acc_z','ang_vel_x','ang_vel_y','ang_vel_z','att_x','att_y','att_z','att_w','gps_health','lat','lng','gps_alt','height_above_takeoff','local_x','local_y','local_z','rc0','rc1','rc2','rc3','rc4','rc5','vx','vy','vz','gimbal_x','gimbal_y','gimbal_z']
+        csv_fields = ['time_total','time_secs','time_nsecs','battery_voltage','battery_current','battery_percentage', 'acc_x','acc_y','acc_z','ang_vel_x','ang_vel_y','ang_vel_z','att_x','att_y','att_z','att_w','gps_health','lat','lng','gps_alt','height_above_takeoff','local_x','local_y','local_z','rc0','rc1','rc2','rc3','rc4','rc5','vx','vy','vz','gimbal_x','gimbal_y','gimbal_z', 'cmd_vx', 'cmd_vy', 'cmd_vz', 'cmd_omega']
         fmt_fields = ['%.3f' if s not in ['lat', 'lng'] else '%.7f'for s in csv_fields ]
         self.header = ','.join(csv_fields)
         self.fmt = ','.join(fmt_fields) + '\n'

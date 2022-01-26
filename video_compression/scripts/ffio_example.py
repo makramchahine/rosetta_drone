@@ -7,7 +7,7 @@ from sensor_msgs.msg import Image, Joy
 
 from dji_osdk_ros.srv import SetupCameraStream, GimbalAction
 
-import ffio
+#import ffio
 
 import cv2
 

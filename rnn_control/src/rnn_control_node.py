@@ -117,12 +117,7 @@ class RNNControlNode:
             self.video_open = False
 
         if self.video_open:
-            if self.log_data:
-                rostime = msg.header.stamp  # rospy.Time.now()
-                rtime = rostime.secs + rostime.nsecs * 1e-9
-                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % rtime) + ".png"), im_smaller)
-                # add newest state for this frame to the csv
-                self.logger.write_state(rostime)
+
 
             # run inference on im_expanded
             out = self.single_step_model.predict([im_network, *self.hiddens])
@@ -143,6 +138,7 @@ class RNNControlNode:
             res1 = self.joystick_mode_client.call(joymode_req)
             # print('joymode response: ', res1)
 
+            self.logger.vel_cmd = vel_cmd.numpy()[0]
             # construct dji velocity command
             req = dji_msg_from_velocity(vel_cmd)
             res2 = self.joystick_action_client.call(req)
@@ -153,6 +149,14 @@ class RNNControlNode:
             # while (time.time() - t0 < 1000):
             #    res2 = self.joystick_action_client.call(joyact_req)
             #    print('Joyact response: ', res2)
+
+
+            if self.log_data:
+                rostime = msg.header.stamp  # rospy.Time.now()
+                rtime = rostime.secs + rostime.nsecs * 1e-9
+                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % rtime) + ".png"), im_smaller)
+                # add newest state for this frame to the csv
+                self.logger.write_state(rostime)
 
     # T -8000 (left)
     # P 8000  (center)
