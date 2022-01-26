@@ -129,7 +129,6 @@ class RNNControlNode:
             ca_req = dji_srv.ObtainControlAuthorityRequest()
             ca_req.enable_obtain = True
             ca_res = self.ca_client.call(ca_req)
-            # print('\n\nca_res: ', ca_res, '\n\n')
 
             joymode_req = dji_srv.SetJoystickModeRequest()
             joymode_req.horizontal_mode = dji_srv.SetJoystickModeRequest.HORIZONTAL_VELOCITY
