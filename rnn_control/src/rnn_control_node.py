@@ -58,7 +58,8 @@ class RNNControlNode:
         print(f"Logging for this run: {log_data}")
 
         self.mean = [0.41718618, 0.48529191, 0.38133072]
-        self.variance = [.057, .05, .061]
+        self.variance = np.array([.057, .05, .061])
+        self.std_dev = np.sqrt(self.variance)
 
         # get model params and load model
         # make params path and checkpoint path relative
@@ -94,9 +95,9 @@ class RNNControlNode:
         im_smaller = np.array(im.resize((256, 144), resample=PIL.Image.BILINEAR))
         im_network = im_smaller / 255
         im_network = im_network - self.mean
-        im_network = im_network / self.variance
+        im_network = im_network / self.std_dev  # norm layer ordinarily divdes by sqrt of var
         # shape: (batch=1, h, w, c)
-        im_network = np.expand_dims(im_network, 0) # add batch dimension
+        im_network = np.expand_dims(im_network, 0)  # add batch dimension
 
         if not self.video_open and not self.close_video:
             # start generating csv
