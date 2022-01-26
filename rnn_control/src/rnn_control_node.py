@@ -93,7 +93,6 @@ class RNNControlNode:
         im_network = im_network - self.mean
         im_network = im_network / self.variance
         im_network = np.expand_dims(im_network, 0)
-        im_expanded = np.expand_dims(im_network, 0)
 
         if not self.video_open and not self.close_video:
             # start generating csv
@@ -108,6 +107,7 @@ class RNNControlNode:
                 Path(image_dir).mkdir(parents=True, exist_ok=True)
 
             self.video_open = True
+            print("starting recording")
         elif self.video_open and self.close_video:
             print("ending recording")
             if self.log_data:
@@ -125,10 +125,9 @@ class RNNControlNode:
                 self.logger.write_state(rostime)
 
             # run inference on im_expanded
-            out = self.single_step_model.predict([im_expanded, *self.hiddens])
+            out = self.single_step_model.predict([im_network, *self.hiddens])
             vel_cmd = out[0]
             self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
-            print(vel_cmd.numpy())
 
             ca_req = dji_srv.ObtainControlAuthorityRequest()
             ca_req.enable_obtain = True
