@@ -66,6 +66,7 @@ class RNNControlNode:
         # make params path and checkpoint path relative
         params_path = os.path.join(SCRIPT_DIR, params_path)
         checkpoint_path = os.path.join(SCRIPT_DIR, checkpoint_path)
+        self.checkpoint_path = checkpoint_path
 
         with open(params_path, "r") as f:
             data = json.loads(f.read())
@@ -107,7 +108,7 @@ class RNNControlNode:
                 rostime = msg.header.stamp  # rospy.Time.now()
                 rtime = rostime.secs + rostime.nsecs * 1e-9
                 self.logger.open_writer(os.path.join(self.path, "%.2f.csv" % rtime))
-
+                Path(os.path.join(self.path, f"{rtime}_{os.path.basename(self.checkpoint_path)}")).touch()
                 # make a directory to store pngs
                 self.path_appendix = '%f' % rtime
                 image_dir = os.path.join(self.path, self.path_appendix)
