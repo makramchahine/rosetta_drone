@@ -1,3 +1,0 @@
-[submodule "drone-causality"]
-	path = drone-causality
-	url = git@github.com:dolphonie/drone-causality.git
