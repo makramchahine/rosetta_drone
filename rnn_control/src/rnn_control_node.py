@@ -20,7 +20,7 @@ from video_compression.scripts.logger_example import Logger
 
 sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
 from drone_causality.utils.model_utils import load_model_from_weights, NCPParams, LSTMParams, CTRNNParams, \
-    generate_hidden_list
+    generate_hidden_list, TCNParams
 
 
 def dji_msg_from_velocity(vel_cmd):
@@ -69,10 +69,11 @@ class RNNControlNode:
 
         with open(params_path, "r") as f:
             data = json.loads(f.read())
-            model_params: Union[NCPParams, LSTMParams, CTRNNParams] = eval(data[os.path.basename(checkpoint_path)])
+            model_params: Union[NCPParams, LSTMParams, CTRNNParams, TCNParams] = eval(data[os.path.basename(checkpoint_path)])
 
         model_params.no_norm_layer = True
-        self.single_step_model = load_model_from_weights(model_params, checkpoint_path, single_step=True)
+        model_params.single_step = True
+        self.single_step_model = load_model_from_weights(model_params, checkpoint_path)
         self.hiddens = generate_hidden_list(model=self.single_step_model, return_numpy=True)
         print('Loaded Model')
 
