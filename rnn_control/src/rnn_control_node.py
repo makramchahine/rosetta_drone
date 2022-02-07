@@ -20,7 +20,7 @@ from video_compression.scripts.logger_example import Logger
 
 sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
 from drone_causality.utils.model_utils import load_model_from_weights, NCPParams, LSTMParams, CTRNNParams, \
-    generate_hidden_list, TCNParams
+    generate_hidden_list, TCNParams, get_readable_name
 
 
 def dji_msg_from_velocity(vel_cmd):
@@ -70,10 +70,12 @@ class RNNControlNode:
 
         with open(params_path, "r") as f:
             data = json.loads(f.read())
-            model_params: Union[NCPParams, LSTMParams, CTRNNParams, TCNParams] = eval(data[os.path.basename(checkpoint_path)])
+            model_params: Union[NCPParams, LSTMParams, CTRNNParams, TCNParams] = eval(
+                data[os.path.basename(checkpoint_path)])
 
         model_params.no_norm_layer = True
         model_params.single_step = True
+        self.readable_model_name = get_readable_name(model_params)
         self.single_step_model = load_model_from_weights(model_params, checkpoint_path)
         self.hiddens = generate_hidden_list(model=self.single_step_model, return_numpy=True)
         print('Loaded Model')
@@ -108,7 +110,7 @@ class RNNControlNode:
                 rostime = msg.header.stamp  # rospy.Time.now()
                 rtime = rostime.secs + rostime.nsecs * 1e-9
                 self.logger.open_writer(os.path.join(self.path, "%.2f.csv" % rtime))
-                Path(os.path.join(self.path, f"{rtime}_{os.path.basename(self.checkpoint_path)}")).touch()
+                Path(os.path.join(self.path, f"{rtime}_{self.readable_model_name}")).touch()
                 # make a directory to store pngs
                 self.path_appendix = '%f' % rtime
                 image_dir = os.path.join(self.path, self.path_appendix)
