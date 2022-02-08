@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
+import json
 import os
 import sys
 from pathlib import Path
+from typing import Union
 
 import PIL
 import PIL.Image
 import cv2
 import dji_osdk_ros.srv as dji_srv
-import kerasncp as kncp
 import numpy as np
 import rospy
-import tensorflow as tf
-from kerasncp.tf import LTCCell
 from sensor_msgs.msg import Image, Joy
-from tensorflow import keras
 
-# import logger from other ros package. Add to system path instead of including proper python lib dependency
-from tf_cfc import MixedCfcCell
-
-script_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(script_dir, "..", ".."))
+# import logger and deepdrone from other ros package. Add to system path instead of including proper python lib dependency
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
 from video_compression.scripts.logger_example import Logger
+
+sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
+from drone_causality.utils.model_utils import load_model_from_weights, NCPParams, LSTMParams, CTRNNParams, \
+    generate_hidden_list, TCNParams, get_readable_name
 
 
 def dji_msg_from_velocity(vel_cmd):
@@ -28,102 +28,12 @@ def dji_msg_from_velocity(vel_cmd):
     joyact_req.joystickCommand.x = vel_cmd[0][0]
     joyact_req.joystickCommand.y = vel_cmd[0][1]
     joyact_req.joystickCommand.z = vel_cmd[0][2]
-    joyact_req.joystickCommand.yaw = vel_cmd[0][3]*180/np.pi
+    joyact_req.joystickCommand.yaw = vel_cmd[0][3] * 180 / np.pi
     return joyact_req
 
 
-def load_model(model_name: str, checkpoint_name: str):
-    # make sure checkpoint includes script dir so script can be run from any file
-    checkpoint_path = os.path.join(script_dir, checkpoint_name)
-    RNN_SIZE = 128
-    IMAGE_SHAPE = (144, 256, 3)
-    inputs = keras.Input(shape=IMAGE_SHAPE)
-    # normalization layer unssupported by version of tensorflow on drone. Data instead normalized in callback
-    if model_name == "ncp_old":
-        # old ncp cnn
-        x = keras.layers.Conv2D(filters=16, kernel_size=(5, 5), strides=(3, 3), activation='relu')(inputs)
-        x = keras.layers.Conv2D(filters=32, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
-        x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
-        x = keras.layers.Conv2D(filters=8, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
-    else:
-        # new ncp cnn
-        x = keras.layers.Conv2D(filters=24, kernel_size=(5, 5), strides=(2, 2), activation='relu')(inputs)
-        x = keras.layers.Conv2D(filters=36, kernel_size=(5, 5), strides=(2, 2), activation='relu')(x)
-        x = keras.layers.Conv2D(filters=48, kernel_size=(5, 5), strides=(2, 2), activation='relu')(x)
-        x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), activation='relu')(x)
-        x = keras.layers.Conv2D(filters=16, kernel_size=(3, 3), strides=(2, 2), activation='relu')(x)
-    # fully connected layers
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(units=128, activation='linear')(x)
-    DROPOUT = 0.0
-    pre_recurrent_layer = keras.layers.Dropout(rate=DROPOUT)(x)
-
-    if model_name.startswith("ncp"):
-        assert model_name == "ncp" or model_name == "ncp_old", \
-            f"Only legal ncp model names are 'ncp' and 'ncp_old', got {model_name}"
-        wiring = kncp.wirings.NCP(
-            inter_neurons=18,  # Number of inter neurons
-            command_neurons=12,  # Number of command neurons
-            motor_neurons=4,  # Number of motor neurons
-            sensory_fanout=6,  # How many outgoing synapses has each sensory neuron
-            inter_fanout=4,  # How many outgoing synapses has each inter neuron
-            recurrent_command_synapses=4,  # Now many recurrent synapses are in the
-            # command neuron layer
-            motor_fanin=6,  # How many incoming synapses has each motor neuron
-        )
-        rnn_cell = LTCCell(wiring, ode_unfolds=6)
-        inputs_state = tf.keras.Input(shape=(rnn_cell.state_size,))
-
-        motor_out, output_states = rnn_cell(pre_recurrent_layer, inputs_state)
-        single_step_model = tf.keras.Model([inputs, inputs_state], [motor_out, output_states])
-
-        single_step_model.load_weights(checkpoint_path)
-        hidden_state = (tf.zeros((1, rnn_cell.state_size)))
-    elif model_name == 'lstm':
-        rnn_cell = tf.keras.layers.LSTMCell(RNN_SIZE)
-        c_state = tf.keras.Input(shape=(rnn_cell.state_size[0]))
-        h_state = tf.keras.Input(shape=(rnn_cell.state_size[1]))
-
-        output, [next_c, next_h] = rnn_cell(pre_recurrent_layer, [c_state, h_state])
-        output = tf.keras.layers.Dense(units=4, activation='linear')(output)
-        single_step_model = tf.keras.Model([inputs, c_state, h_state], [next_c, next_h, output])
-
-        single_step_model.load_weights(checkpoint_path)
-        # hidden c, hidden h
-        hidden_state = (tf.zeros((1, rnn_cell.state_size[0])), tf.zeros((1, rnn_cell.state_size[1])))
-    elif model_name == 'mixedcfc':
-        CONFIG = {
-            "clipnorm": 1,
-            "size": 128,
-            "backbone_activation": "silu",
-            "backbone_dr": 0.1,
-            "forget_bias": 1.6,
-            "backbone_units": 128,
-            "backbone_layers": 1,
-            "weight_decay": 1e-06,
-            "use_mixed": True,
-        }
-
-        rnn_cell = MixedCfcCell(units=RNN_SIZE, hparams=CONFIG)
-
-        c_state = tf.keras.Input(shape=(rnn_cell.state_size[0]))
-        h_state = tf.keras.Input(shape=(rnn_cell.state_size[1]))
-
-        output, [next_c, next_h] = rnn_cell(pre_recurrent_layer, [c_state, h_state])
-        output = tf.keras.layers.Dense(units=4, activation='linear')(output)
-        single_step_model = tf.keras.Model([inputs, c_state, h_state], [next_c, next_h, output])
-
-        single_step_model.load_weights(checkpoint_path)
-        # hidden c, hidden h
-        hidden_state = (tf.zeros((1, rnn_cell.state_size[0])), tf.zeros((1, rnn_cell.state_size[1])))
-    else:
-        raise ValueError(f"Illegal model name {model_name}")
-
-    return single_step_model, hidden_state
-
-
 class RNNControlNode:
-    def __init__(self, path: str, log_data: bool, model_name: str, checkpoint_path: str):
+    def __init__(self, path: str, log_data: bool, params_path: str, checkpoint_path: str):
         rospy.init_node("rnn_control_node")
         # base path to store all files
         # make path if not exists
@@ -149,17 +59,25 @@ class RNNControlNode:
         print(f"Logging for this run: {log_data}")
 
         self.mean = [0.41718618, 0.48529191, 0.38133072]
-        self.variance = [.057, .05, .061]
+        self.variance = np.array([.057, .05, .061])
+        self.std_dev = np.sqrt(self.variance)
 
-        if model_name.startswith("ncp"):
-            self.single_step_model, (self.hidden_state) = load_model(model_name, checkpoint_path)
-        elif model_name == "lstm":
-            self.single_step_model, (self.hidden_c, self.hidden_h) = load_model(model_name, checkpoint_path)
-        elif model_name == "mixedcfc":
-            self.single_step_model, (self.hidden_c, self.hidden_h) = load_model(model_name, checkpoint_path)
-        else:
-            raise ValueError(f"Illegal model name {model_name}")
+        # get model params and load model
+        # make params path and checkpoint path relative
+        params_path = os.path.join(SCRIPT_DIR, params_path)
+        checkpoint_path = os.path.join(SCRIPT_DIR, checkpoint_path)
+        self.checkpoint_path = checkpoint_path
 
+        with open(params_path, "r") as f:
+            data = json.loads(f.read())
+            model_params: Union[NCPParams, LSTMParams, CTRNNParams, TCNParams] = eval(
+                data[os.path.basename(checkpoint_path)])
+
+        model_params.no_norm_layer = True
+        model_params.single_step = True
+        self.readable_model_name = get_readable_name(model_params)
+        self.single_step_model = load_model_from_weights(model_params, checkpoint_path)
+        self.hiddens = generate_hidden_list(model=self.single_step_model, return_numpy=True)
         print('Loaded Model')
 
         # init ros
@@ -168,8 +86,8 @@ class RNNControlNode:
         self.joystick_action_client = rospy.ServiceProxy('joystick_action', dji_srv.JoystickAction)
         self.ca_client = rospy.ServiceProxy('obtain_release_control_authority', dji_srv.ObtainControlAuthority)
 
-        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb)
-        rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb)
+        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb, queue_size=1)
+        rospy.Subscriber('dji_osdk_ros/rc', Joy, self.joy_cb, queue_size=1)
         print("Finished initialization of model and ros setup")
         rospy.spin()
 
@@ -177,12 +95,14 @@ class RNNControlNode:
         im_np = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
         # resize image
         im = PIL.Image.fromarray(im_np)
+        # shape: (h, w, c)
+        # note PIL resize is width, height, whereas channel dim is height, widdth
         im_smaller = np.array(im.resize((256, 144), resample=PIL.Image.BILINEAR))
         im_network = im_smaller / 255
         im_network = im_network - self.mean
-        im_network = im_network / self.variance
-        im_network = np.expand_dims(im_network, 0)
-        im_expanded = np.expand_dims(im_network, 0)
+        im_network = im_network / self.std_dev  # norm layer ordinarily divdes by sqrt of var
+        # shape: (batch=1, h, w, c)
+        im_network = np.expand_dims(im_network, 0)  # add batch dimension
 
         if not self.video_open and not self.close_video:
             # start generating csv
@@ -190,13 +110,14 @@ class RNNControlNode:
                 rostime = msg.header.stamp  # rospy.Time.now()
                 rtime = rostime.secs + rostime.nsecs * 1e-9
                 self.logger.open_writer(os.path.join(self.path, "%.2f.csv" % rtime))
-
+                Path(os.path.join(self.path, f"{rtime}_{self.readable_model_name}")).touch()
                 # make a directory to store pngs
                 self.path_appendix = '%f' % rtime
                 image_dir = os.path.join(self.path, self.path_appendix)
                 Path(image_dir).mkdir(parents=True, exist_ok=True)
 
             self.video_open = True
+            print("starting recording")
         elif self.video_open and self.close_video:
             print("ending recording")
             if self.log_data:
@@ -206,31 +127,14 @@ class RNNControlNode:
             self.video_open = False
 
         if self.video_open:
-            if self.log_data:
-                rostime = msg.header.stamp  # rospy.Time.now()
-                rtime = rostime.secs + rostime.nsecs * 1e-9
-                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % rtime) + ".png"), im_smaller)
-                # add newest state for this frame to the csv
-                self.logger.write_state(rostime)
-
-            # run inference on im_expanded
-            if model_name.startswith("ncp"):
-                vel_cmd, self.hidden_state = self.single_step_model([im_expanded, self.hidden_state])
-            elif model_name == "lstm":
-                self.hidden_c, self.hidden_h, vel_cmd = self.single_step_model(
-                    [im_expanded, self.hidden_c, self.hidden_h])
-            elif model_name == "mixedcfc":
-                self.hidden_c, self.hidden_h, vel_cmd = self.single_step_model(
-                    [im_expanded, self.hidden_c, self.hidden_h])
-            else:
-                raise ValueError(f"Illegal model name {model_name}")
-
-            print(vel_cmd.numpy())
+            # run inference on im_network
+            out = self.single_step_model.predict([im_network, *self.hiddens])
+            vel_cmd = out[0]
+            self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
 
             ca_req = dji_srv.ObtainControlAuthorityRequest()
             ca_req.enable_obtain = True
             ca_res = self.ca_client.call(ca_req)
-           # print('\n\nca_res: ', ca_res, '\n\n')
 
             joymode_req = dji_srv.SetJoystickModeRequest()
             joymode_req.horizontal_mode = dji_srv.SetJoystickModeRequest.HORIZONTAL_VELOCITY
@@ -239,18 +143,18 @@ class RNNControlNode:
             joymode_req.horizontal_coordinate = dji_srv.SetJoystickModeRequest.HORIZONTAL_BODY
             joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
             res1 = self.joystick_mode_client.call(joymode_req)
-            # print('joymode response: ', res1)
 
+            self.logger.vel_cmd = vel_cmd[0]
             # construct dji velocity command
             req = dji_msg_from_velocity(vel_cmd)
             res2 = self.joystick_action_client.call(req)
-            # print('Joyact response: ', res2)
-            # t0 = time.time()
-            # while (time.time() - t0 < 1000):
-            # t0 = time.time()
-            # while (time.time() - t0 < 1000):
-            #    res2 = self.joystick_action_client.call(joyact_req)
-            #    print('Joyact response: ', res2)
+
+            if self.log_data:
+                rostime = msg.header.stamp  # rospy.Time.now()
+                rtime = rostime.secs + rostime.nsecs * 1e-9
+                cv2.imwrite(os.path.join(self.path, self.path_appendix, ('%.3f' % rtime) + ".png"), im_smaller)
+                # add newest state for this frame to the csv
+                self.logger.write_state(rostime)
 
     # T -8000 (left)
     # P 8000  (center)
@@ -296,8 +200,9 @@ class RNNControlNode:
 
 
 if __name__ == "__main__":
-    path_param = rospy.get_param("path", default="~/flash")
-    log_data = rospy.get_param("log_data", default=False)
-    model_name = rospy.get_param("model_name", default="ncp_old")
-    model_checkpoint = rospy.get_param("checkpoint_path", default="models/ncp_old.hdf5")
-    node = RNNControlNode(path_param, log_data, model_name, model_checkpoint)
+    path_ros = rospy.get_param("path", default="~/flash")
+    log_data_ros = rospy.get_param("log_data", default=False)
+    params_path_ros = rospy.get_param("params_path", default="models/online_1/params.json")
+    checkpoint_path_ros = rospy.get_param("checkpoint_path")
+    node = RNNControlNode(path=path_ros, log_data=log_data_ros, params_path=params_path_ros,
+                          checkpoint_path=checkpoint_path_ros)
