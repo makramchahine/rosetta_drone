@@ -1,6 +1,5 @@
 <launch>
-    <param name="log_data" type="bool" value="true"/>
-    <param name="path" type="str" value="/home/dji/flash/"/>
+    <param name="log_path" type="str" value="/home/dji/flash/"/>
     <param name="model_name" type="str" value="ncp_old"/>
     <param name="checkpoint_path" type="str" value="models/ncp_old.hdf5"/>
     <node pkg="rnn_control" type="rnn_control_node.py" name="rnn_control_node" output="screen"/>
