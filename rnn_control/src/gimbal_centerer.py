@@ -9,8 +9,9 @@ class GimbalCenterer:
     gimbal over the course of center_duration seconds. To use, repeatedly call the center_
     """
 
-    def __init__(self, center_every: float = 1, center_duration: float = 0.5):
+    def __init__(self, center_every: float = 10, center_duration: float = 0.5):
         rospy.init_node("gimbal_centerer_node")
+        print(f"Starting gimbal center every {center_every} seconds over {center_duration} duration")
         self.center_duration = center_duration
         self.gimbal_task_service = rospy.ServiceProxy("gimbal_task_control", dji_srv.GimbalAction)
 

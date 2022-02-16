@@ -59,8 +59,8 @@ class RNNControlNode:
 
         # normalization constants to replicate tf norm layers
         self.mean = [0.41718618, 0.48529191, 0.38133072]
-        self.variance = np.array([.057, .05, .061])
-        self.std_dev = np.sqrt(self.variance)
+        variance = np.array([.057, .05, .061])
+        self.std_dev = np.sqrt(variance)
 
         # get model params and load model
         # make params path and checkpoint path relative
@@ -80,8 +80,8 @@ class RNNControlNode:
         print('Loaded Model')
 
         # print strs
-        self.readable_model_name = get_readable_name(model_params)
-        self.log_suffix = log_suffix
+        readable_model_name = get_readable_name(model_params)
+        self.log_id = f"{readable_model_name}{log_suffix}"
 
         # init ros
         self.velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
@@ -112,9 +112,9 @@ class RNNControlNode:
             if self.log_path is not None:
                 rostime = msg.header.stamp  # rospy.Time.now()
                 rtime = rostime.secs + rostime.nsecs * 1e-9
-                self.path_appendix = f"{round(rtime, 2)}_{self.readable_model_name}{self.log_suffix}"
+                self.path_appendix = f"{round(rtime, 2)}_{self.log_id}"
                 self.logger.open_writer(os.path.join(self.log_path, f"{self.path_appendix}.csv"))
-                Path(os.path.join(self.log_path, f"{rtime}_{self.readable_model_name}")).touch()
+                Path(os.path.join(self.log_path, f"{rtime}_{self.log_id}")).touch()
                 # make a directory to store pngs
                 image_dir = os.path.join(self.log_path, self.path_appendix)
                 Path(image_dir).mkdir(parents=True, exist_ok=True)
@@ -217,8 +217,8 @@ class RNNControlNode:
 
 if __name__ == "__main__":
     log_path = rospy.get_param("log_path", default="~/flash")
-    params_path_ros = rospy.get_param("params_path", default="models/online_1/params.json")
-    checkpoint_path_ros = rospy.get_param("checkpoint_path")
+    params_path_ros = rospy.get_param("params_path", default="models/all_types_val/params.json")
+    checkpoint_path_ros = rospy.get_param("checkpoint_path", default="models/all_types_val/headless/rev-0_model-ncp_seq-64_opt-adam_lr-0.000291_crop-0.000000_epoch-028_val_loss:0.2109_mse:0.1213_2022:02:02:22:20:37.hdf5")
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     node = RNNControlNode(log_path=log_path, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros)
