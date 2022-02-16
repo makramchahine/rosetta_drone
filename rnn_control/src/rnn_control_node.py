@@ -217,8 +217,8 @@ class RNNControlNode:
 
 if __name__ == "__main__":
     log_path = rospy.get_param("log_path", default="~/flash")
-    params_path_ros = rospy.get_param("params_path", default="models/all_types_val/params.json")
-    checkpoint_path_ros = rospy.get_param("checkpoint_path", default="models/all_types_val/headless/rev-0_model-ncp_seq-64_opt-adam_lr-0.000291_crop-0.000000_epoch-028_val_loss:0.2109_mse:0.1213_2022:02:02:22:20:37.hdf5")
+    params_path_ros = rospy.get_param("params_path", default="models/all_types_train/params.json")
+    checkpoint_path_ros = rospy.get_param("checkpoint_path", default="models/all_types_train/headless/rev-0_model-ctrnn_ctt-bidirect_cn-1.000000_bba-silu_bb-dr-0.100000_fb-1.600000_bbu-128_bbl-1_wd-0.000001_seq-64_opt-adam_lr-0.000236_crop-0.000000_epoch-099_val-loss:0.2360_mse:0.0297_2022:02:05:02:17:14.hdf5")
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     node = RNNControlNode(log_path=log_path, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros)
