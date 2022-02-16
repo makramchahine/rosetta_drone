@@ -114,7 +114,6 @@ class RNNControlNode:
                 rtime = rostime.secs + rostime.nsecs * 1e-9
                 self.path_appendix = f"{round(rtime, 2)}_{self.log_id}"
                 self.logger.open_writer(os.path.join(self.log_path, f"{self.path_appendix}.csv"))
-                Path(os.path.join(self.log_path, f"{rtime}_{self.log_id}")).touch()
                 # make a directory to store pngs
                 image_dir = os.path.join(self.log_path, self.path_appendix)
                 Path(image_dir).mkdir(parents=True, exist_ok=True)
