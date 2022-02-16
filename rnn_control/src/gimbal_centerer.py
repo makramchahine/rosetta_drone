@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import dji_osdk_ros.srv as dji_srv
 import rospy
 from rospy.timer import TimerEvent
@@ -19,15 +20,16 @@ class GimbalCenterer:
         rospy.spin()
 
     def center_gimbal(self, event: TimerEvent):
-        gimbal_action = dji_srv.GimbalAction
+        gimbal_action = dji_srv.GimbalActionRequest()
         gimbal_action.is_reset = False
-        gimbal_action.payload_index = 1  # see common_types.h in dji sdk
+        gimbal_action.payload_index = 0  # see common_types.h in dji sdk
         gimbal_action.rotationMode = 1  # absolute positioning
         gimbal_action.pitch = 0
         gimbal_action.roll = 0
-        gimbal_action.yaw = 0
+        gimbal_action.yaw = 108.7
         gimbal_action.time = self.center_duration
         self.gimbal_task_service.call(gimbal_action)
+        print("centered gimbal")
 
 
 if __name__ == "__main__":
