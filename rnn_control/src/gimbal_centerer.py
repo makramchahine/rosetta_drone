@@ -29,7 +29,6 @@ class GimbalCenterer:
         gimbal_action.yaw = 108.7
         gimbal_action.time = self.center_duration
         self.gimbal_task_service.call(gimbal_action)
-        print("centered gimbal")
 
 
 if __name__ == "__main__":

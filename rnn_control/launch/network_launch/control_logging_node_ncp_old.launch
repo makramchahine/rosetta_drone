@@ -4,6 +4,4 @@
     <param name="params_path" type="str" value="models/online_1/params.json"/>
     <param name="checkpoint_path" type="str" value="models/online_1/headless/rev-0_model-ncp_seq-64_opt-adam_lr-0.000273_crop-0.000000_epoch-086_val_loss:0.2399_mse:0.0689_2022:01:23:13:39:23.hdf5"/>
     <node pkg="rnn_control" type="rnn_control_node.py" name="rnn_control_node" output="screen"/>
-
-    <node pkg="rnn_control" type="gimbal_centerer.py" name="gimbal_centerer_node" output="screen"/>
 </launch>
