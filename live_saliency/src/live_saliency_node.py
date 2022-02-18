@@ -13,17 +13,17 @@ import rospy
 from sensor_msgs.msg import Image
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
 from drone_causality.utils.model_utils import NCPParams, LSTMParams, CTRNNParams, TCNParams
 from drone_causality.visual_backprop import get_conv_head, visualbackprop_activations, convert_to_color_frame
-
+import tensorflow as tf
 
 
 
 class LiveSaliencyNode:
     def __init__(self, checkpoint_path: str, params_path: str):
         rospy.init_node("rnn_control_node")
-        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb, queue_size=1)
 
         with open(params_path, "r") as f:
             data = json.loads(f.read())
@@ -41,6 +41,8 @@ class LiveSaliencyNode:
 
         self.conv_head = get_conv_head(checkpoint_path, model_params)
         print(f"Finished model loading")
+
+        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb, queue_size=1)
         rospy.spin()
 
     def image_cb(self, msg: Image):
