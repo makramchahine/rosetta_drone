@@ -15,7 +15,8 @@ from sensor_msgs.msg import Image
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
-from drone_causality.utils.model_utils import NCPParams, LSTMParams, CTRNNParams, TCNParams
+from drone_causality.utils.model_utils import NCPParams, LSTMParams, CTRNNParams, TCNParams, load_model_from_weights, \
+    generate_hidden_list
 from drone_causality.visual_backprop import get_conv_head, visualbackprop_activations, convert_to_color_frame
 import tensorflow as tf
 
@@ -40,6 +41,8 @@ class LiveSaliencyNode:
         self.folder_name = f"{round(rtime, 2)}"
 
         self.conv_head = get_conv_head(checkpoint_path, model_params)
+        self.single_step_model = load_model_from_weights(model_params, checkpoint_path)
+        self.hiddens = generate_hidden_list(model=self.single_step_model, return_numpy=True)
         print(f"Finished model loading")
 
         rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb, queue_size=1)
@@ -65,6 +68,14 @@ class LiveSaliencyNode:
         cv2.imwrite(os.path.join("~/dji/flash", self.folder_name, ('%.3f' % rtime) + ".png"), im_smaller)
 
         saliency = visualbackprop_activations(self.conv_head, activations)
+
+        out = self.single_step_model.predict([im_network, *self.hiddens])
+        vel_cmd = out[0]
+        self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
+
+        # vel command is v_x, v_y, v_z, w
+        print(f"Velocity command: {vel_cmd}")
+
         cv2.imshow("Frame", convert_to_color_frame(saliency))
         cv2.waitKey(1)
 
