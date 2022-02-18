@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="live_saliency" type="live_saliency_node.py" name="live_saliency_node" output="screen"/>
+</launch>
