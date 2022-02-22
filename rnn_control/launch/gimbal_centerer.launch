@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="rnn_control" type="gimbal_centerer.py" name="gimbal_centerer_node" output="screen"/>
+</launch>

@@ -1,0 +1,7 @@
+<launch>
+    <param name="log_path" type="str" value="/home/dji/flash/"/>
+    <param name="log_suffix" type="str" value="_val"/>
+    <param name="params_path" type="str" value="models/all_types_val/params.json"/>
+    <param name="checkpoint_path" type="str" value="models/all_types_val/headless/rev-0_model-ctrnn_ctt-phased_cn-1.000000_bba-silu_bb-dr-0.100000_fb-1.600000_bbu-128_bbl-1_wd-0.000001_seq-64_opt-adam_lr-0.000490_crop-0.000000_epoch-029_val-loss:0.1813_mse:0.0952_2022:02:04:06:38:41.hdf5"/>
+    <node pkg="rnn_control" type="rnn_control_node.py" name="rnn_control_node" output="screen"/>
+</launch>
