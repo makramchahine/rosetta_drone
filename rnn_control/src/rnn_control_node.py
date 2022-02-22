@@ -11,6 +11,7 @@ import cv2
 import dji_osdk_ros.srv as dji_srv
 import numpy as np
 import rospy
+from numpy import ndarray
 from sensor_msgs.msg import Image, Joy
 
 # import logger and deepdrone from other ros package. Add to system path instead of including proper python lib dependency
@@ -135,13 +136,11 @@ class RNNControlNode:
             self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
 
             # need to periodically reobtain control authority and set control mode
-            ca_res = self.ca_service.call(self.get_ca_req())
-            res1 = self.joystick_mode_service.call(self.get_joymode_req())
-
-            self.logger.vel_cmd = vel_cmd[0]  # strip batch dim
-            # construct dji velocity command
-            req = dji_msg_from_velocity(vel_cmd)
-            res2 = self.joystick_action_service.call(req)
+            vel_cmd = vel_cmd[0]  # strip batch dim, shape before: 1 x 4, after 4
+            self.logger.vel_cmd = vel_cmd
+            self.send_vel_cmd(vel_cmd=vel_cmd, ca_service=self.ca_service,
+                              joystick_mode_service=self.joystick_mode_service,
+                              joystick_action_service=self.joystick_action_service)
 
             if self.log_path is not None:
                 rostime = msg.header.stamp  # rospy.Time.now()
@@ -191,6 +190,16 @@ class RNNControlNode:
         self.last_input = current_input
 
     @staticmethod
+    def send_vel_cmd(vel_cmd: ndarray, ca_service: rospy.ServiceProxy, joystick_mode_service: rospy.ServiceProxy,
+                     joystick_action_service: rospy.ServiceProxy):
+        ca_res = ca_service.call(RNNControlNode.get_ca_req())
+        res1 = joystick_mode_service.call(RNNControlNode.get_joymode_req())
+
+        # construct dji velocity command
+        req = dji_msg_from_velocity(vel_cmd)
+        res2 = joystick_action_service.call(req)
+
+    @staticmethod
     def get_joymode_req():
         """
         Convenience function that returns a rosservice request for the default joystick mode used to control the drone
@@ -217,7 +226,8 @@ class RNNControlNode:
 if __name__ == "__main__":
     log_path = rospy.get_param("log_path", default="~/flash")
     params_path_ros = rospy.get_param("params_path", default="models/all_types_train/params.json")
-    checkpoint_path_ros = rospy.get_param("checkpoint_path", default="models/all_types_train/headless/rev-0_model-ctrnn_ctt-bidirect_cn-1.000000_bba-silu_bb-dr-0.100000_fb-1.600000_bbu-128_bbl-1_wd-0.000001_seq-64_opt-adam_lr-0.000236_crop-0.000000_epoch-099_val-loss:0.2360_mse:0.0297_2022:02:05:02:17:14.hdf5")
+    checkpoint_path_ros = rospy.get_param("checkpoint_path",
+                                          default="models/all_types_train/headless/rev-0_model-ctrnn_ctt-bidirect_cn-1.000000_bba-silu_bb-dr-0.100000_fb-1.600000_bbu-128_bbl-1_wd-0.000001_seq-64_opt-adam_lr-0.000236_crop-0.000000_epoch-099_val-loss:0.2360_mse:0.0297_2022:02:05:02:17:14.hdf5")
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     node = RNNControlNode(log_path=log_path, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros)
