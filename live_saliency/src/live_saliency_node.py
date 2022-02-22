@@ -10,6 +10,7 @@ import PIL.Image
 import cv2
 import numpy as np
 import rospy
+import pathlib
 from sensor_msgs.msg import Image
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +39,8 @@ class LiveSaliencyNode:
         variance = np.array([.057, .05, .061])
         self.std_dev = np.sqrt(variance)
         rtime = time.time()
-        self.folder_name = f"{round(rtime, 2)}"
+        self.folder_name = os.path.join("/home/dji/flash", f"{round(rtime, 2)}")
+        pathlib.Path(self.folder_name).mkdir(exist_ok=True, parents=True)
 
         self.conv_head = get_conv_head(checkpoint_path, model_params)
         self.single_step_model = load_model_from_weights(model_params, checkpoint_path)
@@ -65,7 +67,7 @@ class LiveSaliencyNode:
 
         rostime = msg.header.stamp  # rospy.Time.now()
         rtime = rostime.secs + rostime.nsecs * 1e-9
-        cv2.imwrite(os.path.join("~/dji/flash", self.folder_name, ('%.3f' % rtime) + ".png"), im_smaller)
+        cv2.imwrite(os.path.join(self.folder_name, ('%.3f' % rtime) + ".png"), im_smaller)
 
         saliency = visualbackprop_activations(self.conv_head, activations)
 
@@ -75,8 +77,10 @@ class LiveSaliencyNode:
 
         # vel command is v_x, v_y, v_z, w
         print(f"Velocity command: {vel_cmd}")
+        saliency = convert_to_color_frame(saliency)
+        saliency = cv2.resize(saliency, (256*3, 144*3))
 
-        cv2.imshow("Frame", convert_to_color_frame(saliency))
+        cv2.imshow("Frame", saliency)
         cv2.waitKey(1)
 
 

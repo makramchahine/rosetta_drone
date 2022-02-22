@@ -135,9 +135,8 @@ class RNNControlNode:
             vel_cmd = out[0]
             self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
 
-            # need to periodically reobtain control authority and set control mode
-            vel_cmd = vel_cmd[0]  # strip batch dim, shape before: 1 x 4, after 4
-            self.logger.vel_cmd = vel_cmd
+            # strip batch dim for logger, shape before: 1 x 4, after 4
+            self.logger.vel_cmd = vel_cmd[0]
             self.send_vel_cmd(vel_cmd=vel_cmd, ca_service=self.ca_service,
                               joystick_mode_service=self.joystick_mode_service,
                               joystick_action_service=self.joystick_action_service)

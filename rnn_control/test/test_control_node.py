@@ -24,7 +24,7 @@ class TestControlNode:
         rospy.spin()
 
     def send_move_command(self, event: TimerEvent):
-        vel_cmd = np.array([1, 0, 0, 0])
+        vel_cmd = np.array([[0, 0, 0, 1]])
         RNNControlNode.send_vel_cmd(vel_cmd=vel_cmd, ca_service=self.ca_service,
                                     joystick_mode_service=self.joystick_mode_service,
                                     joystick_action_service=self.joystick_action_service)
