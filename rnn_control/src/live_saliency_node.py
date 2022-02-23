@@ -14,8 +14,8 @@ import pathlib
 from sensor_msgs.msg import Image
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
-sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
+sys.path.append(os.path.join(SCRIPT_DIR, "../../live_saliency", ".."))
+sys.path.append(os.path.join(SCRIPT_DIR, "../../live_saliency", "..", "drone_causality"))
 from drone_causality.utils.model_utils import NCPParams, LSTMParams, CTRNNParams, TCNParams, load_model_from_weights, \
     generate_hidden_list
 from drone_causality.visual_backprop import get_conv_head, visualbackprop_activations, convert_to_color_frame
@@ -85,7 +85,7 @@ class LiveSaliencyNode:
 
 
 if __name__ == "__main__":
-    base_dir = os.path.join(SCRIPT_DIR, "..", "..", "rnn_control", "src")
+    base_dir = os.path.join(SCRIPT_DIR, "../../live_saliency", "..", "rnn_control", "src")
     checkpoint_path = "models/all_types_train/headless/rev-0_model-ncp_seq-64_opt-adam_lr-0.000291_crop-0.000000_epoch-099_val_loss:0.2465_mse:0.0590_2022:02:09:12:22:53.hdf5"
     params_path = "models/all_types_train/params.json"
     checkpoint_path = os.path.join(base_dir, checkpoint_path)
