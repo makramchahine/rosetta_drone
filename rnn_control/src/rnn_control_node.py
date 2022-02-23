@@ -10,7 +10,7 @@ import rospy
 from numpy import ndarray
 from sensor_msgs.msg import Image, Joy
 
-from rnn_control.src.logger_node import Logger
+from rnn_control.src.logger_node import Logger, process_image
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
@@ -21,6 +21,17 @@ from drone_causality.utils.model_utils import load_model_from_weights, generate_
 MEAN = [0.41718618, 0.48529191, 0.38133072]
 VARIANCE = np.array([.057, .05, .061])
 
+
+def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
+    std_dev = np.sqrt(VARIANCE)
+
+    im_smaller = process_image(msg)
+    im_network = im_smaller / 255
+    im_network = im_network - MEAN
+    im_network = im_network / std_dev  # norm layer ordinarily divdes by sqrt of var
+    # shape: (batch=1, h, w, c)
+    im_network = np.expand_dims(im_network, 0)  # add batch dimension
+    return im_smaller, im_network
 
 class RNNControlNode:
     def __init__(self, params_path: str, checkpoint_path: str, log_path: str, log_suffix: str = ""):
@@ -53,7 +64,7 @@ class RNNControlNode:
         rospy.spin()
 
     def _image_cb(self, msg: Image):
-        im_smaller, im_network = self.process_image_network(msg)
+        im_smaller, im_network = process_image_network(msg)
 
         if self.logger.is_recording:  # run network on image and control drone
             # run inference on im_network
@@ -90,18 +101,6 @@ class RNNControlNode:
         joyact_req.joystickCommand.z = vel_cmd[0][2]
         joyact_req.joystickCommand.yaw = vel_cmd[0][3] * 180 / np.pi
         res2 = joystick_action_service.call(joyact_req)
-
-    @staticmethod
-    def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
-        std_dev = np.sqrt(VARIANCE)
-
-        im_smaller = Logger.process_image(msg)
-        im_network = im_smaller / 255
-        im_network = im_network - MEAN
-        im_network = im_network / std_dev  # norm layer ordinarily divdes by sqrt of var
-        # shape: (batch=1, h, w, c)
-        im_network = np.expand_dims(im_network, 0)  # add batch dimension
-        return im_smaller, im_network
 
 
 if __name__ == "__main__":
