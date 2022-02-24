@@ -3,19 +3,19 @@ import os
 import sys
 from typing import Tuple
 
-import cv2
 import dji_osdk_ros.srv as dji_srv
 import numpy as np
 import rospy
 from numpy import ndarray
-from sensor_msgs.msg import Image, Joy
+from sensor_msgs.msg import Image
 
-from rnn_control.src.logger_node import Logger, process_image
+from logger_node import Logger, process_image
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
-from drone_causality.utils.model_utils import load_model_from_weights, generate_hidden_list, get_readable_name
+from drone_causality.utils.model_utils import load_model_from_weights, generate_hidden_list, get_readable_name, \
+    get_params_from_json
 
 # normalization constants
 MEAN = [0.41718618, 0.48529191, 0.38133072]
@@ -32,6 +32,7 @@ def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
     # shape: (batch=1, h, w, c)
     im_network = np.expand_dims(im_network, 0)  # add batch dimension
     return im_smaller, im_network
+
 
 class RNNControlNode:
     def __init__(self, params_path: str, checkpoint_path: str, log_path: str, log_suffix: str = ""):
@@ -69,7 +70,7 @@ class RNNControlNode:
         if self.logger.is_recording:  # run network on image and control drone
             # run inference on im_network
             out = self.single_step_model.predict([im_network, *self.hiddens])
-            vel_cmd = out[0] # shape: 1 x 4
+            vel_cmd = out[0]  # shape: 1 x 4
             self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
 
             # strip batch dim for logger, shape before: 1 x 4, after 4
@@ -105,9 +106,8 @@ class RNNControlNode:
 
 if __name__ == "__main__":
     log_path = rospy.get_param("log_path", default="~/flash")
-    params_path_ros = rospy.get_param("params_path", default="models/all_types_train/params.json")
-    checkpoint_path_ros = rospy.get_param("checkpoint_path",
-                                          default="models/all_types_train/headless/rev-0_model-ctrnn_ctt-bidirect_cn-1.000000_bba-silu_bb-dr-0.100000_fb-1.600000_bbu-128_bbl-1_wd-0.000001_seq-64_opt-adam_lr-0.000236_crop-0.000000_epoch-099_val-loss:0.2360_mse:0.0297_2022:02:05:02:17:14.hdf5")
+    params_path_ros = rospy.get_param("params_path")
+    checkpoint_path_ros = rospy.get_param("checkpoint_path")
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     node = RNNControlNode(log_path=log_path, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros)

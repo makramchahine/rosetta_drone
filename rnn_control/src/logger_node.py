@@ -1,6 +1,6 @@
 import os
 import sys
-from enum import Enum
+from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
@@ -12,22 +12,23 @@ import rospy
 from numpy import ndarray
 from sensor_msgs.msg import Image, Joy
 
-from rnn_control.src.csv_writer import CSVWriter
+from csv_writer import CSVWriter
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
 from drone_causality.keras_models import IMAGE_SHAPE
 
 
 class LoggerState(Enum):
-    STOPPED = 0
-    RECORDING = 1
+    STOPPED = auto()
+    RECORDING = auto()
 
 
 class SwitchState(Enum):
-    LEFT = 0
-    CENTER = 1
-    RIGHT = 2
+    LEFT = -8000
+    CENTER = 8000
+    RIGHT = 0
 
 
 DEBOUNCE_PERIOD = 2
@@ -99,14 +100,7 @@ class Logger:
 
     def _update_state(self, msg: Joy) -> None:
         current_input = msg.axes[4]
-        if current_input == -8000:
-            switch_state = SwitchState.LEFT
-        elif current_input == 8000:
-            switch_state = SwitchState.CENTER
-        elif current_input == 0:
-            switch_state = SwitchState.RIGHT
-        else:
-            raise ValueError(f"Got illegal switch state {current_input}")
+        switch_state = SwitchState(current_input)
 
         time: float = msg.header.stamp.to_sec()
         if time - self._last_transition_time < DEBOUNCE_PERIOD:
@@ -116,6 +110,7 @@ class Logger:
         if self.state == LoggerState.STOPPED:
             if switch_state == SwitchState.RIGHT:
                 # start recording
+                self.state = LoggerState.RECORDING
                 self._current_logname = f"{round(time, 2)}{self.log_suffix}"
                 self._csv_writer.open_writer(os.path.join(self._log_path, f"{self._current_logname}.csv"))
                 # make a directory to store pngs
@@ -124,6 +119,7 @@ class Logger:
                 print("Started recording")
         elif self.state == LoggerState.RECORDING:
             if switch_state == SwitchState.LEFT:
+                self.state = LoggerState.STOPPED
                 self._csv_writer.close_writer()
                 print("Stopped recording")
         else:
