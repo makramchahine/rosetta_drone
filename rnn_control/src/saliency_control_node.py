@@ -27,12 +27,13 @@ TARGET_AREA = 600  # based on chair size in snowy run
 
 # tune gains to aim for max 1 m/s forward, 0.5 m/s left-right
 # in data max is 2.5m/s forward, 1.7m/s left-right
+# note i-gains are very small because testing offline and don't want windup
 PAN_P = 0.01
-PAN_I = 0.005
+PAN_I = 0.0005
 PAN_D = 0.001
 
 FORWARD_P = 0.002
-FORWARD_I = 0.0005
+FORWARD_I = 0.00005
 FORWARD_D = 0.0001
 
 
@@ -87,7 +88,8 @@ class SaliencyControlNode:
         vel_cmd = np.array([[0, 0, 0, 0]], dtype=np.float32)
         if obj is not None:
             centroid, area = obj
-            img_center = np.array([el // 2 for el in im_smaller.shape[:2]])
+            # centroid coords are horiz, vertical, but array storage shape is height x width
+            img_center = np.array([el // 2 for el in im_smaller.shape[:2]])[::-1]
             # command to send is (forward [pitch], right [roll], up [throttle], clockwise [yaw])
             roll_error = centroid[1] - img_center[1]
             vel_cmd[0, 1] = self.roll_pid(roll_error)
