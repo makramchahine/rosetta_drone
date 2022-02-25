@@ -1,4 +1,0 @@
-<launch>
-    <param name="log_path" type="str" value=""/>
-    <node pkg="rnn_control" type="rnn_control_node.py" name="rnn_control_node" output="screen"/>
-</launch>

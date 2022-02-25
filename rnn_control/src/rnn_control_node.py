@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+import json
 import os
 import sys
-from typing import Tuple
+from typing import Tuple, Optional
 
 import dji_osdk_ros.srv as dji_srv
 import numpy as np
@@ -42,15 +43,32 @@ def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
     return im_smaller, im_network
 
 
-def find_checkpoint_path(params_path: str, model_name: str) -> str:
+def find_checkpoint_path(params_path: str, checkpoint_path: Optional[str], model_name: Optional[str]) -> str:
     """
-    Convenience function that looks up model_name in the keys of the json at params_path to prevent the user from having
-    to type the whole modeo name into the roslaunch
+    Convenience function that if checkpoint_path is not passed, looks up model_name in the keys of the json at
+    params_path to prevent the user from having to type the whole modeo name into the roslaunch
 
     :param params_path: path to params json relative to this script dir
+    :param checkpoint_path: path to model checkpoint. If this is passed, function does not look for model_name
     :param model_name: name of model to look up
     :return: path relative to this dir of most likely model name
     """
+    if checkpoint_path is not None:
+        if model_name is not None:
+            print(f"Checkpoint path explicitly passed. Not using model name {model_name}")
+        return checkpoint_path
+    else:
+        assert model_name is not None, "Passed neither model name nor checkpoint path. Need at least 1"
+        with open(os.path.join(SCRIPT_DIR, params_path), "r") as f:
+            params_data = json.load(f)
+        models = params_data.keys()
+        for model in models:
+            # case 1: not ctrnn, just look for model name
+            # case 2: ctrnn type, look for whole string
+            # case 3: not named by trainign script, allow custom name of whole model.hdf5
+            if f"_{model_name}_" in model or f"ctrnn_ctt-{model_name}_" in model or model_name == f"{model_name}.hdf5":
+                return os.path.join(os.path.dirname(params_path), "headless", model)
+        raise ValueError(f"Could not find model {model_name} in {params_path}")
 
 
 class RNNControlNode:
@@ -71,7 +89,7 @@ class RNNControlNode:
 
         # print strs
         readable_model_name = get_readable_name(model_params)
-        self.logger = Logger(log_path=log_path, log_suffix=f"{readable_model_name}{log_suffix}")
+        self.logger = Logger(log_path=log_path, log_suffix=f"_{readable_model_name}{log_suffix}")
 
         # init ros
         self.velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
@@ -136,6 +154,12 @@ if __name__ == "__main__":
     log_path = rospy.get_param("log_path", default="~/flash")
     params_path_ros = rospy.get_param("params_path")
     checkpoint_path_ros = rospy.get_param("checkpoint_path", default=None)
+    model_name_ros = rospy.get_param("model_name", default=None)
     log_suffix_ros = rospy.get_param("log_suffix", default="")
+    checkpoint_path_ros = find_checkpoint_path(params_path=params_path_ros, checkpoint_path=checkpoint_path_ros,
+                                               model_name=model_name_ros)
+    if log_suffix_ros == "":
+        log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
+
     node = RNNControlNode(log_path=log_path, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros)

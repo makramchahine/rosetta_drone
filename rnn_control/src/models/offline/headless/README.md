@@ -1,0 +1,1 @@
+The mixedcfc.hdf5 in this directory is the same as the one outside, this directory is just here so the model name inference scripts work the same way as the other dirs

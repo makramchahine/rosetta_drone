@@ -12,7 +12,7 @@ from sensor_msgs.msg import Image
 from simple_pid import PID
 
 from logger_node import Logger
-from rnn_control_node import RNNControlNode, process_image_network
+from rnn_control_node import RNNControlNode, process_image_network, find_checkpoint_path
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(SCRIPT_DIR, "../../live_saliency", ".."))
@@ -173,10 +173,16 @@ class SaliencyControlNode:
 
 if __name__ == "__main__":
     log_path = rospy.get_param("log_path", default="/home/dji/flash")
+    display_contour_ros = rospy.get_param("display_contour", default=False)
     params_path_ros = rospy.get_param("params_path")
     checkpoint_path_ros = rospy.get_param("checkpoint_path", default=None)
+    model_name_ros = rospy.get_param("model_name", default=None)
     log_suffix_ros = rospy.get_param("log_suffix", default="")
-    display_contour_ros = rospy.get_param("display_contour", default=False)
+    checkpoint_path_ros = find_checkpoint_path(params_path=params_path_ros, checkpoint_path=checkpoint_path_ros,
+                                               model_name=model_name_ros)
+    if log_suffix_ros == "":
+        log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
+
     node = SaliencyControlNode(log_path=log_path, params_path=params_path_ros,
                                checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros,
                                display_contour=display_contour_ros)
