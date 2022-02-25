@@ -23,7 +23,7 @@ from drone_causality.visual_backprop import get_conv_head, visualbackprop_activa
 
 MIN_AREA = 50
 NOT_FOUND_TURN_RATE = 5
-TARGET_AREA = 600  # based on chair size in snowy run
+TARGET_AREA = 1340  # based on chair size in snowy run
 
 # tune gains to aim for max 1 m/s forward, 0.5 m/s left-right
 # in data max is 2.5m/s forward, 1.7m/s left-right
@@ -120,8 +120,8 @@ class SaliencyControlNode:
             visualbackprop_activations(activations, self.conv_head))  # use for normalize, not color convert
 
         # find contours in saliency map
-        gray = cv2.cvtColor(saliency, cv2.COLOR_BGR2GRAY)  # shape: h x w
-        blurred = cv2.blur(gray, (10, 10))
+        saliency_gray = cv2.cvtColor(saliency, cv2.COLOR_BGR2GRAY)  # shape: h x w
+        blurred = cv2.blur(saliency_gray, (10, 10))
         ret, thresh = cv2.threshold(blurred, 50, 255, cv2.THRESH_BINARY)
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -133,13 +133,13 @@ class SaliencyControlNode:
         for i, contour in enumerate(contours):
             area = poly_area(contours[i])
             if area > MIN_AREA:
-                mask = cv2.drawContours(np.zeros_like(gray, dtype=np.uint8), contours, i,
+                mask = cv2.drawContours(np.zeros_like(saliency_gray, dtype=np.uint8), contours, i,
                                         (1, 1, 1),
                                         thickness=cv2.FILLED)
                 point_count = np.sum(mask)
 
                 num_contour_points.append(point_count)
-                total_brightness = np.sum(mask * gray)
+                total_brightness = np.sum(mask * saliency_gray)
                 average_contour_values.append(total_brightness / point_count)
                 contour_centroids.append(np.mean(np.squeeze(contour, axis=1), axis=0))
                 contour_areas.append(area)
