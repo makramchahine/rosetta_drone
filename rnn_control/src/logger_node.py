@@ -21,16 +21,23 @@ from drone_causality.keras_models import IMAGE_SHAPE
 
 
 class LoggerState(Enum):
+    """
+    States for logging state machine. Could be bool but want flexibility
+    """
     STOPPED = auto()
     RECORDING = auto()
 
 
 class SwitchState(Enum):
+    """
+    Class mapping dji rc values to the 3 positions of the flight mode select switch on the remote
+    """
     LEFT = -8000
     CENTER = 8000
     RIGHT = 0
 
 
+# don't allow multiple transitions within DEBOUNCE_PERIOD seconds
 DEBOUNCE_PERIOD = 2
 
 
@@ -99,6 +106,12 @@ class Logger:
             cv2.imwrite(os.path.join(self._log_path, self._current_logname, ('%.3f' % rtime) + ".png"), image)
 
     def _update_state(self, msg: Joy) -> None:
+        """
+        Handles updating state machine logic, including transitions. Instantiates and closes both csv and image logs
+        depending on image script.
+
+        :param msg: ROS RC message from DJI OSDK
+        """
         current_input = msg.axes[4]
         switch_state = SwitchState(current_input)
 

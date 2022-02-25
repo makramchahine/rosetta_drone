@@ -23,6 +23,14 @@ VARIANCE = np.array([.057, .05, .061])
 
 
 def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
+    """
+    Converts ros Image sensor message to numpy array, and performs rescaling and normalization that would ordinarily
+    be performed by tensorflow preprocessing layers but can't be used with this version of tf
+
+    :param msg: Ros Image sensor message
+    :return: Tuple of the numpy version of the processed image and also the rescaled and normalized version to be fed
+    into the network
+    """
     std_dev = np.sqrt(VARIANCE)
 
     im_smaller = process_image(msg)
@@ -32,6 +40,17 @@ def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
     # shape: (batch=1, h, w, c)
     im_network = np.expand_dims(im_network, 0)  # add batch dimension
     return im_smaller, im_network
+
+
+def find_checkpoint_path(params_path: str, model_name: str) -> str:
+    """
+    Convenience function that looks up model_name in the keys of the json at params_path to prevent the user from having
+    to type the whole modeo name into the roslaunch
+
+    :param params_path: path to params json relative to this script dir
+    :param model_name: name of model to look up
+    :return: path relative to this dir of most likely model name
+    """
 
 
 class RNNControlNode:
@@ -83,6 +102,15 @@ class RNNControlNode:
     @staticmethod
     def send_vel_cmd(vel_cmd: ndarray, ca_service: rospy.ServiceProxy, joystick_mode_service: rospy.ServiceProxy,
                      joystick_action_service: rospy.ServiceProxy):
+        """
+        Convenience script that invokes ros services to send vel_cmd to the drone
+
+        :param vel_cmd: shape 1x4, with elements forward x right x up x clockwise that represents control signal
+        :param ca_service: service proxy for obtain_release_control_authority
+        :param joystick_mode_service: service proxy for set_joystick_mode
+        :param joystick_action_service: service proxy for joystick_action
+        :return: N/A
+        """
         ca_req = dji_srv.ObtainControlAuthorityRequest()
         ca_req.enable_obtain = True
         ca_res = ca_service.call(ca_req)
@@ -107,7 +135,7 @@ class RNNControlNode:
 if __name__ == "__main__":
     log_path = rospy.get_param("log_path", default="~/flash")
     params_path_ros = rospy.get_param("params_path")
-    checkpoint_path_ros = rospy.get_param("checkpoint_path")
+    checkpoint_path_ros = rospy.get_param("checkpoint_path", default=None)
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     node = RNNControlNode(log_path=log_path, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros)

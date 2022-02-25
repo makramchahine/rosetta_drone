@@ -21,8 +21,9 @@ from drone_causality.utils.model_utils import load_model_from_weights, \
     generate_hidden_list, get_params_from_json
 from drone_causality.visual_backprop import get_conv_head, visualbackprop_activations, convert_to_color_frame
 
-MIN_AREA = 50
-NOT_FOUND_TURN_RATE = 5
+# Constants for saliency control
+MIN_AREA = 50  # drop any candidate contours that have area less than this
+NOT_FOUND_TURN_RATE = 5  # if no contours are present, send this as a yaw command with no other fields filled
 TARGET_AREA = 1340  # based on chair size in snowy run
 
 # tune gains to aim for max 1 m/s forward, 0.5 m/s left-right
@@ -70,7 +71,7 @@ class SaliencyControlNode:
         self.roll_pid = PID(Kp=PAN_P, Ki=PAN_I, Kd=PAN_D)
         self.throttle_pid = PID(Kp=PAN_P, Ki=PAN_I, Kd=PAN_D)
         self.pitch_pid = PID(Kp=FORWARD_P, Ki=FORWARD_I, Kd=FORWARD_D)
-        self.yaw_pid = PID() # unused for now
+        self.yaw_pid = PID()  # unused for now
 
         self.display_contour = display_contour
 
@@ -109,8 +110,13 @@ class SaliencyControlNode:
 
     def best_object(self, im_network: ndarray, im_smaller: Optional[ndarray] = None) -> Optional[Tuple[ndarray, float]]:
         """
+        Func that finds the contour in the blurred saliency map that has the highest average pixel value and returns
+        its centroid and area
 
-        :param im_network: shape height x width x channels. Normalized color image taken from drone for network consumption
+        :param im_network: shape height x width x channels. Normalized color image taken from drone for network
+        consumption
+        :param im_smaller: If self.display_contour is True, this image will be used for visualization. This image does
+        not need to be provided if the debug display is not enabled and has no effect on control output
         :return: centroid (ndarray of 2 els (x, y) where x is vertical and y is horizontal) and area, float representing
         area of polygon
         """
@@ -133,6 +139,7 @@ class SaliencyControlNode:
         for i, contour in enumerate(contours):
             area = poly_area(contours[i])
             if area > MIN_AREA:
+                # calculate average pixel value by multiplying against contour mask
                 mask = cv2.drawContours(np.zeros_like(saliency_gray, dtype=np.uint8), contours, i,
                                         (1, 1, 1),
                                         thickness=cv2.FILLED)
@@ -166,9 +173,8 @@ class SaliencyControlNode:
 
 if __name__ == "__main__":
     log_path = rospy.get_param("log_path", default="/home/dji/flash")
-    params_path_ros = rospy.get_param("params_path", default="models/all_types_train/params.json")
-    checkpoint_path_ros = rospy.get_param("checkpoint_path",
-                                          default="models/all_types_train/headless/rev-0_model-ctrnn_ctt-bidirect_cn-1.000000_bba-silu_bb-dr-0.100000_fb-1.600000_bbu-128_bbl-1_wd-0.000001_seq-64_opt-adam_lr-0.000236_crop-0.000000_epoch-099_val-loss:0.2360_mse:0.0297_2022:02:05:02:17:14.hdf5")
+    params_path_ros = rospy.get_param("params_path")
+    checkpoint_path_ros = rospy.get_param("checkpoint_path", default=None)
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     display_contour_ros = rospy.get_param("display_contour", default=False)
     node = SaliencyControlNode(log_path=log_path, params_path=params_path_ros,
