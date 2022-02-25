@@ -1,0 +1,5 @@
+{
+  "mixedcfc.hdf5": "CTRNNParams(seq_len=64, image_shape=(144, 256, 3), augmentation_params=None, rnn_stateful=False, batch_size=None, single_step=True, rnn_sizes=[128], ct_network_type='mixedcfc', config={'clipnorm': 1, 'backbone_activation': 'silu', 'backbone_dr': 0.1, 'forget_bias': 1.6, 'backbone_units': 128, 'backbone_layers': 1, 'weight_decay': 1e-06, 'use_mixed': True})"
+}
+
+

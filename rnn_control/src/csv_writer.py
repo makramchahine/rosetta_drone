@@ -6,7 +6,7 @@ from dji_osdk_ros.msg import VOPosition
 
 
 
-class Logger:
+class CSVWriter:
     """Logs data from ros topics in a csv stored by frame time instead of a rosbag
     which means you dont have to synchronize data afterwards
 
