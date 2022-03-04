@@ -91,10 +91,11 @@ class SaliencyControlNode:
             centroid, area = obj
             # centroid coords are horiz, vertical, but array storage shape is height x width
             img_center = np.array([el // 2 for el in im_smaller.shape[:2]])[::-1]
-            # command to send is (forward [pitch], right [roll], up [throttle], clockwise [yaw])
-            roll_error = centroid[1] - img_center[1]
+            # command to send is (forward [pitch], left [roll], up [throttle], counterclockwise [yaw])
+            # want commands to point drone in same direction as offset
+            roll_error = centroid[0] - img_center[0]
             vel_cmd[0, 1] = self.roll_pid(roll_error)
-            throttle_error = -(centroid[0] - img_center[0])
+            throttle_error = centroid[1] - img_center[1]
             vel_cmd[0, 2] = self.throttle_pid(throttle_error)
             pitch_error = area - TARGET_AREA
             vel_cmd[0, 0] = self.pitch_pid(pitch_error)

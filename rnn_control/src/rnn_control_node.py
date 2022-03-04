@@ -123,7 +123,7 @@ class RNNControlNode:
         """
         Convenience script that invokes ros services to send vel_cmd to the drone
 
-        :param vel_cmd: shape 1x4, with elements forward x right x up x clockwise that represents control signal
+        :param vel_cmd: shape 1x4, with elements forward x left x up x counterclockwise that represents control signal
         :param ca_service: service proxy for obtain_release_control_authority
         :param joystick_mode_service: service proxy for set_joystick_mode
         :param joystick_action_service: service proxy for joystick_action
@@ -142,11 +142,13 @@ class RNNControlNode:
         res1 = joystick_mode_service.call(joymode_req)
 
         # construct dji velocity command
+        # Note drone takes coordinates in forward x right x up x clockwise but we are given
+        # forward x left x up x counterclockwise because this is what we use in training. Reverse yaw and roll
         joyact_req = dji_srv.JoystickActionRequest()
         joyact_req.joystickCommand.x = vel_cmd[0][0]
-        joyact_req.joystickCommand.y = vel_cmd[0][1]
+        joyact_req.joystickCommand.y = -vel_cmd[0][1]
         joyact_req.joystickCommand.z = vel_cmd[0][2]
-        joyact_req.joystickCommand.yaw = vel_cmd[0][3] * 180 / np.pi
+        joyact_req.joystickCommand.yaw = -vel_cmd[0][3] * 180 / np.pi
         res2 = joystick_action_service.call(joyact_req)
 
 
