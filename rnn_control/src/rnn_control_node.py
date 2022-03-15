@@ -66,7 +66,7 @@ def find_checkpoint_path(params_path: str, checkpoint_path: Optional[str], model
             # case 1: not ctrnn, just look for model name
             # case 2: ctrnn type, look for whole string
             # case 3: not named by trainign script, allow custom name of whole model.hdf5
-            if f"_{model_name}_" in model or f"ctrnn_ctt-{model_name}_" in model or model_name == f"{model_name}.hdf5":
+            if f"-{model_name}_" in model or f"ctrnn_ctt-{model_name}_" in model or model_name == f"{model_name}.hdf5":
                 return os.path.join(os.path.dirname(params_path), "headless", model)
         raise ValueError(f"Could not find model {model_name} in {params_path}")
 

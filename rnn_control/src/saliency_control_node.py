@@ -15,11 +15,12 @@ from logger_node import Logger
 from rnn_control_node import RNNControlNode, process_image_network, find_checkpoint_path
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(SCRIPT_DIR, "../../live_saliency", ".."))
-sys.path.append(os.path.join(SCRIPT_DIR, "../../live_saliency", "..", "drone_causality"))
+sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
+sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
 from drone_causality.utils.model_utils import load_model_from_weights, \
     generate_hidden_list, get_params_from_json
-from drone_causality.visual_backprop import get_conv_head, visualbackprop_activations, convert_to_color_frame
+from drone_causality.analysis.visual_backprop import get_conv_head, compute_visualbackprop
+from drone_causality.analysis.vis_utils import convert_to_color_frame
 
 # Constants for saliency control
 MIN_AREA = 50  # drop any candidate contours that have area less than this
@@ -121,10 +122,8 @@ class SaliencyControlNode:
         :return: centroid (ndarray of 2 els (x, y) where x is vertical and y is horizontal) and area, float representing
         area of polygon
         """
-        # get saliency map
-        activations = self.conv_head.predict(im_network)
-        saliency = convert_to_color_frame(
-            visualbackprop_activations(activations, self.conv_head))  # use for normalize, not color convert
+        # use for normalize, not color convert
+        saliency = convert_to_color_frame(compute_visualbackprop(img=im_network, activation_model=self.conv_head))
 
         # find contours in saliency map
         saliency_gray = cv2.cvtColor(saliency, cv2.COLOR_BGR2GRAY)  # shape: h x w
