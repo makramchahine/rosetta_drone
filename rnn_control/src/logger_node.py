@@ -41,24 +41,6 @@ class SwitchState(Enum):
 DEBOUNCE_PERIOD = 2
 
 
-def process_image(msg: Image) -> ndarray:
-    """
-    Converts rospy sensor message into numpy array without using cv_bridge (since this has dep issues in python3)
-    :param msg: rospy message
-    :return: numpy array of shape height x width x channels, where height=256 and width=144 as defined in
-    keras_models.py
-    """
-    im_np = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
-    # resize image
-    im = PIL.Image.fromarray(im_np)
-    # shape: (h, w, c)
-    height = IMAGE_SHAPE[0]
-    width = IMAGE_SHAPE[1]
-    # note PIL resize is width, height, whereas image ndarray shape is height, width
-    im_smaller = np.array(im.resize((width, height), resample=PIL.Image.BILINEAR))
-    return im_smaller
-
-
 class Logger:
     """
     Utility class that contains logic to update logging state from flight control mode switch and manage file creation/

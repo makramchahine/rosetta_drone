@@ -18,7 +18,7 @@ class DefaultDataClass:
 
 class DummyMessage(DefaultDataClass):
     """
-    DefaultDataClass that is special-case to handle nested acesses
+    DefaultDataClass that is special-cased to handle nested accesses
     """
 
     def __init__(self):
