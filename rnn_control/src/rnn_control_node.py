@@ -72,7 +72,8 @@ def find_checkpoint_path(params_path: str, checkpoint_path: Optional[str], model
 
 
 class RNNControlNode:
-    def __init__(self, params_path: str, checkpoint_path: str, log_path: str, log_suffix: str = ""):
+    def __init__(self, params_path: str, checkpoint_path: str, log_path: str, log_suffix: str = "",
+                 pitch_only: bool = False):
         rospy.init_node("rnn_control_node")
 
         # get model params and load model
@@ -90,6 +91,8 @@ class RNNControlNode:
         # print strs
         readable_model_name = get_readable_name(model_params)
         self.logger = Logger(log_path=log_path, log_suffix=f"_{readable_model_name}{log_suffix}")
+
+        self.pitch_only = pitch_only
 
         # init ros
         self.velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
@@ -109,6 +112,9 @@ class RNNControlNode:
             out = self.single_step_model.predict([im_network, *self.hiddens])
             vel_cmd = out[0]  # shape: 1 x 4
             self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
+
+            if self.pitch_only:
+                vel_cmd[0, 1:] = 0
 
             # strip batch dim for logger, shape before: 1 x 4, after 4
             self.send_vel_cmd(vel_cmd=vel_cmd, ca_service=self.ca_service,
@@ -158,10 +164,11 @@ if __name__ == "__main__":
     checkpoint_path_ros = rospy.get_param("checkpoint_path", default=None)
     model_name_ros = rospy.get_param("model_name", default=None)
     log_suffix_ros = rospy.get_param("log_suffix", default="")
+    pitch_only_ros = rospy.get_param("pitch_only", default=False)
     checkpoint_path_ros = find_checkpoint_path(params_path=params_path_ros, checkpoint_path=checkpoint_path_ros,
                                                model_name=model_name_ros)
     if log_suffix_ros == "":
         log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
 
     node = RNNControlNode(log_path=log_path, params_path=params_path_ros,
-                          checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros)
+                          checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros, pitch_only=pitch_only_ros)
