@@ -86,34 +86,36 @@ class SaliencyControlNode:
         rospy.spin()
 
     def image_cb(self, msg: Image):
-        im_smaller, im_network = process_image_network(msg)
-        obj = self.best_object(im_network=im_network, im_smaller=im_smaller)
-        vel_cmd = np.array([[0, 0, 0, 0]], dtype=np.float32)
-        if obj is not None:
-            centroid, area = obj
-            # centroid coords are horiz, vertical, but array storage shape is height x width
-            img_center = np.array([el // 2 for el in im_smaller.shape[:2]])[::-1]
-            # command to send is (forward [pitch], left [roll], up [throttle], counterclockwise [yaw])
-            # want commands to point drone in same direction as offset
-            roll_error = centroid[0] - img_center[0]
-            vel_cmd[0, 1] = self.roll_pid(roll_error)
-            throttle_error = centroid[1] - img_center[1]
-            vel_cmd[0, 2] = self.throttle_pid(throttle_error)
-            pitch_error = area - TARGET_AREA
-            vel_cmd[0, 0] = self.pitch_pid(pitch_error)
-            # for now, set yaw as 0 always
-        else:
-            # spin drone to look for object
-            vel_cmd[0, 3] = NOT_FOUND_TURN_RATE
+        if self.logger.is_recording:  # run network on image and control drone
+            im_smaller, im_network = process_image_network(msg)
+            obj = self.best_object(im_network=im_network, im_smaller=im_smaller)
+            vel_cmd = np.array([[0, 0, 0, 0]], dtype=np.float32)
+            if obj is not None:
+                centroid, area = obj
+                # centroid coords are horiz, vertical, but array storage shape is height x width
+                img_center = np.array([el // 2 for el in im_smaller.shape[:2]])[::-1]
+                # command to send is (forward [pitch], left [roll], up [throttle], counterclockwise [yaw])
+                # want commands to point drone in same direction as offset
+                roll_error = centroid[0] - img_center[0]
+                vel_cmd[0, 1] = self.roll_pid(roll_error)
+                throttle_error = centroid[1] - img_center[1]
+                vel_cmd[0, 2] = self.throttle_pid(throttle_error)
+                pitch_error = area - TARGET_AREA
+                vel_cmd[0, 0] = self.pitch_pid(pitch_error)
+                # for now, set yaw as 0 always
+            else:
+                # spin drone to look for object
+                vel_cmd[0, 3] = NOT_FOUND_TURN_RATE
 
-            # strip batch dim for logger, shape before: 1 x 4, after 4
-        if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
-            # only ask for control authority a fixed time after transition
-            RNNControlNode.obtain_control_authority(ca_service=self.ca_service,
-                                                    joystick_mode_service=self.joystick_mode_service, )
-        RNNControlNode.send_vel_cmd(vel_cmd=vel_cmd,
-                                    joystick_action_service=self.joystick_action_service)
-        self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=msg.header.stamp.to_sec())
+                # strip batch dim for logger, shape before: 1 x 4, after 4
+            print(f"time since transition {self.logger.time_since_transition()}")
+            if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
+                # only ask for control authority a fixed time after transition
+                RNNControlNode.obtain_control_authority(ca_service=self.ca_service,
+                                                        joystick_mode_service=self.joystick_mode_service, )
+            RNNControlNode.send_vel_cmd(vel_cmd=vel_cmd,
+                                        joystick_action_service=self.joystick_action_service)
+            self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=msg.header.stamp.to_sec())
 
     def best_object(self, im_network: ndarray, im_smaller: Optional[ndarray] = None) -> Optional[Tuple[ndarray, float]]:
         """
