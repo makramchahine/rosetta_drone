@@ -104,6 +104,7 @@ class Logger:
                 self._csv_writer.vel_cmd = vel_cmd[0]
 
             cv2.imwrite(os.path.join(self._log_path, self._current_logname, ('%.3f' % rtime) + ".png"), image)
+            self._csv_writer.write_state(rtime=rtime)
 
     def _update_state(self, msg: Joy) -> None:
         """

@@ -67,7 +67,7 @@ def init_dummy_services():
 
 def send_start_recording():
     def send_right(event: TimerEvent):
-        msg = Joy(axes=[0.0, 0.0, 0.0, 0.0, float(SwitchState.RIGHT.value)])
+        msg = Joy(axes=[0.0, 0.0, 0.0, 0.0, float(SwitchState.RIGHT.value), 0])
         msg.header.stamp = rospy.Time.now()
         pub.publish(msg)
 

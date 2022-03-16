@@ -1,9 +1,31 @@
 import rospy
-from std_msgs.msg import UInt8, Float32
-from sensor_msgs.msg import BatteryState, NavSatFix, Imu, Joy
-from geometry_msgs.msg import Vector3Stamped, QuaternionStamped, PointStamped
 from dji_osdk_ros.msg import VOPosition
+from geometry_msgs.msg import Vector3Stamped, QuaternionStamped, PointStamped
+from sensor_msgs.msg import BatteryState, NavSatFix, Joy
+from std_msgs.msg import UInt8, Float32
 
+
+class DefaultDataClass:
+    """
+    Convenience class that returns 0 instead of throwing an error for arbitrary accesses, allowing csv writer to fail
+    gracefully
+    """
+
+    def __getattr__(self, item):
+        print(f"Field {item} has not been populated yet. Replacing with 0")
+        return 0
+
+
+class DummyMessage(DefaultDataClass):
+    """
+    DefaultDataClass that is special-case to handle nested acesses
+    """
+
+    def __init__(self):
+        self.vector = DefaultDataClass()
+        self.quaternion = DefaultDataClass()
+        self.point = DefaultDataClass()
+        self.axes = [0] * 10
 
 
 class CSVWriter:
@@ -15,13 +37,8 @@ class CSVWriter:
 
     """
 
-
-    def write_state(self, time_msg):
+    def write_state(self, rtime: float):
         """Takes in the ros timestamp to associate with the line and writes the currently cached data to the csv"""
-        #time_msg = rospy.Time.now()
-        time_total = time_msg.secs + time_msg.nsecs*1e-9
-        time_secs = time_msg.secs
-        time_nsecs = time_msg.nsecs
 
         batt_msg = self.battery_state_msg
         battery_voltage = batt_msg.voltage
@@ -54,7 +71,7 @@ class CSVWriter:
 
         height_above_takeoff = self.height_above_takeoff_msg.data
 
-        if self.local_position_msg:
+        if not isinstance(self.local_position_msg, DummyMessage):
 
             pos_msg = self.local_position_msg
             local_x = pos_msg.point.x
@@ -79,17 +96,21 @@ class CSVWriter:
         vy = vel_msg.vector.y
         vz = vel_msg.vector.z
 
-        #vo_pos_msg = self.vo_position_msg
+        # vo_pos_msg = self.vo_position_msg
 
         gimbal_msg = self.gimbal_msg
         gimbal_x = gimbal_msg.vector.x
         gimbal_y = gimbal_msg.vector.y
         gimbal_z = gimbal_msg.vector.z
 
-        csv_row = self.fmt % (time_total, time_secs, time_nsecs, battery_voltage,battery_current,battery_percentage, acc_x,acc_y,acc_z,ang_vel_x,ang_vel_y,ang_vel_z,att_x,att_y,att_z,att_w,gps_health,lat,lng,gps_alt,height_above_takeoff,local_x,local_y,local_z,rc0,rc1,rc2,rc3,rc4,rc5,vx,vy,vz,gimbal_x,gimbal_y,gimbal_z,self.vel_cmd[0], self.vel_cmd[1], self.vel_cmd[2], self.vel_cmd[3])
+        csv_row = self.fmt % (
+            rtime, battery_voltage, battery_current, battery_percentage, acc_x, acc_y, acc_z, ang_vel_x, ang_vel_y,
+            ang_vel_z, att_x, att_y, att_z, att_w, gps_health, lat, lng, gps_alt, height_above_takeoff, local_x,
+            local_y,
+            local_z, rc0, rc1, rc2, rc3, rc4, rc5, vx, vy, vz, gimbal_x, gimbal_y, gimbal_z, self.vel_cmd[0],
+            self.vel_cmd[1], self.vel_cmd[2], self.vel_cmd[3])
 
         self.write_file.write(csv_row)
-
 
     def open_writer(self, filepath):
         """Opens the file to begin writing"""
@@ -112,58 +133,73 @@ class CSVWriter:
         rospy.Subscriber('/dji_osdk_ros/gps_health', UInt8, self.gps_health_cb)
         rospy.Subscriber('/dji_osdk_ros/gps_position', NavSatFix, self.gps_position_cb)
         rospy.Subscriber('/dji_osdk_ros/height_above_takeoff', Float32, self.height_above_takeoff_cb)
-        #rospy.Subscriber('/dji_osdk_ros/imu', Imu, imu_cb)
+        # rospy.Subscriber('/dji_osdk_ros/imu', Imu, imu_cb)
         rospy.Subscriber('/dji_osdk_ros/local_position', PointStamped, self.local_position_cb)
         rospy.Subscriber('/dji_osdk_ros/rc', Joy, self.rc_cb)
         rospy.Subscriber('/dji_osdk_ros/velocity', Vector3Stamped, self.velocity_cb)
         rospy.Subscriber('/dji_osdk_ros/vo_position', VOPosition, self.vo_position_cb)
         rospy.Subscriber('/dji_osdk_ros/gimbal_angle', Vector3Stamped, self.gimbal_cb)
 
-        #self.vel_cmd = None
-        self.vel_cmd = [0,0,0,0]
-        self.battery_state_msg = None
-        self.acc_ground_fused_msg = None
-        self.angular_vel_msg = None
-        self.attitude_msg = None
-        self.gps_health_msg = None
-        self.gps_position_msg = None
-        self.height_above_takeoff_msg = None
-        self.imu_msg = None
-        self.local_position_msg = None
-        self.rc_msg = None
-        self.velocity_msg = None
-        self.vo_position_msg = None
-        self.gimbal_msg = None
+        # self.vel_cmd = None
+        self.vel_cmd = [0, 0, 0, 0]
+        self.battery_state_msg = DummyMessage()
+        self.acc_ground_fused_msg = DummyMessage()
+        self.angular_vel_msg = DummyMessage()
+        self.attitude_msg = DummyMessage()
+        self.gps_health_msg = DummyMessage()
+        self.gps_position_msg = DummyMessage()
+        self.height_above_takeoff_msg = DummyMessage()
+        self.imu_msg = DummyMessage()
+        self.local_position_msg = DummyMessage()
+        self.rc_msg = DummyMessage()
+        self.velocity_msg = DummyMessage()
+        self.vo_position_msg = DummyMessage()
+        self.gimbal_msg = DummyMessage()
 
-        csv_fields = ['time_total','time_secs','time_nsecs','battery_voltage','battery_current','battery_percentage', 'acc_x','acc_y','acc_z','ang_vel_x','ang_vel_y','ang_vel_z','att_x','att_y','att_z','att_w','gps_health','lat','lng','gps_alt','height_above_takeoff','local_x','local_y','local_z','rc0','rc1','rc2','rc3','rc4','rc5','vx','vy','vz','gimbal_x','gimbal_y','gimbal_z', 'cmd_vx', 'cmd_vy', 'cmd_vz', 'cmd_omega']
-        fmt_fields = ['%.3f' if s not in ['lat', 'lng'] else '%.7f'for s in csv_fields ]
+        csv_fields = ['time_total', 'battery_voltage', 'battery_current', 'battery_percentage', 'acc_x', 'acc_y',
+                      'acc_z', 'ang_vel_x', 'ang_vel_y', 'ang_vel_z', 'att_x', 'att_y', 'att_z', 'att_w', 'gps_health',
+                      'lat', 'lng', 'gps_alt', 'height_above_takeoff', 'local_x', 'local_y', 'local_z', 'rc0', 'rc1',
+                      'rc2', 'rc3', 'rc4', 'rc5', 'vx', 'vy', 'vz', 'gimbal_x', 'gimbal_y', 'gimbal_z', 'cmd_vx',
+                      'cmd_vy', 'cmd_vz', 'cmd_omega']
+        fmt_fields = ['%.3f' if s not in ['lat', 'lng'] else '%.7f' for s in csv_fields]
         self.header = ','.join(csv_fields)
         self.fmt = ','.join(fmt_fields) + '\n'
         self.write_file = None
 
     def battery_state_cb(self, msg):
         self.battery_state_msg = msg
+
     def acc_ground_fused_cb(self, msg):
         self.acc_ground_fused_msg = msg
+
     def angular_vel_fused_cb(self, msg):
         self.angular_vel_msg = msg
+
     def attitude_cb(self, msg):
         self.attitude_msg = msg
+
     def gps_health_cb(self, msg):
         self.gps_health_msg = msg
+
     def gps_position_cb(self, msg):
         self.gps_position_msg = msg
+
     def height_above_takeoff_cb(self, msg):
         self.height_above_takeoff_msg = msg
-    #def imu_cb(self, msg):
+
+    # def imu_cb(self, msg):
     #    self.imu_msg = msg
     def local_position_cb(self, msg):
         self.local_position_msg = msg
+
     def rc_cb(self, msg):
         self.rc_msg = msg
+
     def velocity_cb(self, msg):
         self.velocity_msg = msg
+
     def vo_position_cb(self, msg):
         self.vo_position_msg = msg
+
     def gimbal_cb(self, msg):
         self.gimbal_msg = msg
