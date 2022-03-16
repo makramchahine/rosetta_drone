@@ -22,6 +22,8 @@ from drone_causality.utils.model_utils import load_model_from_weights, generate_
 MEAN = [0.41718618, 0.48529191, 0.38133072]
 VARIANCE = np.array([.057, .05, .061])
 
+CONTROL_AUTHORITY_TIME = 3
+
 
 def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
     """
@@ -117,24 +119,17 @@ class RNNControlNode:
                 vel_cmd[0, 1:] = 0
 
             # strip batch dim for logger, shape before: 1 x 4, after 4
-            self.send_vel_cmd(vel_cmd=vel_cmd, ca_service=self.ca_service,
-                              joystick_mode_service=self.joystick_mode_service,
+            if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
+                # only ask for control authority a fixed time after transition
+                self.obtain_control_authority(ca_service=self.ca_service,
+                                              joystick_mode_service=self.joystick_mode_service, )
+            self.send_vel_cmd(vel_cmd=vel_cmd,
                               joystick_action_service=self.joystick_action_service)
 
             self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=msg.header.stamp.to_sec())
 
     @staticmethod
-    def send_vel_cmd(vel_cmd: ndarray, ca_service: rospy.ServiceProxy, joystick_mode_service: rospy.ServiceProxy,
-                     joystick_action_service: rospy.ServiceProxy):
-        """
-        Convenience script that invokes ros services to send vel_cmd to the drone
-
-        :param vel_cmd: shape 1x4, with elements forward x left x up x counterclockwise that represents control signal
-        :param ca_service: service proxy for obtain_release_control_authority
-        :param joystick_mode_service: service proxy for set_joystick_mode
-        :param joystick_action_service: service proxy for joystick_action
-        :return: N/A
-        """
+    def obtain_control_authority(ca_service: rospy.ServiceProxy, joystick_mode_service: rospy.ServiceProxy, ):
         ca_req = dji_srv.ObtainControlAuthorityRequest()
         ca_req.enable_obtain = True
         ca_res = ca_service.call(ca_req)
@@ -147,6 +142,17 @@ class RNNControlNode:
         joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
         res1 = joystick_mode_service.call(joymode_req)
 
+    @staticmethod
+    def send_vel_cmd(vel_cmd: ndarray, joystick_action_service: rospy.ServiceProxy):
+        """
+        Convenience script that invokes ros services to send vel_cmd to the drone
+
+        :param vel_cmd: shape 1x4, with elements forward x left x up x counterclockwise that represents control signal
+        :param ca_service: service proxy for obtain_release_control_authority
+        :param joystick_mode_service: service proxy for set_joystick_mode
+        :param joystick_action_service: service proxy for joystick_action
+        :return: N/A
+        """
         # construct dji velocity command
         # Note drone takes coordinates in forward x right x up x clockwise but we are given
         # forward x left x up x counterclockwise because this is what we use in training. Reverse yaw and roll

@@ -26,6 +26,7 @@ from drone_causality.analysis.vis_utils import convert_to_color_frame
 MIN_AREA = 50  # drop any candidate contours that have area less than this
 NOT_FOUND_TURN_RATE = 5  # if no contours are present, send this as a yaw command with no other fields filled
 TARGET_AREA = 1340  # based on chair size in snowy run
+CONTROL_AUTHORITY_TIME = 3
 
 # tune gains to aim for max 1 m/s forward, 0.5 m/s left-right
 # in data max is 2.5m/s forward, 1.7m/s left-right
@@ -105,8 +106,12 @@ class SaliencyControlNode:
             # spin drone to look for object
             vel_cmd[0, 3] = NOT_FOUND_TURN_RATE
 
-        RNNControlNode.send_vel_cmd(vel_cmd=vel_cmd, ca_service=self.ca_service,
-                                    joystick_mode_service=self.joystick_mode_service,
+            # strip batch dim for logger, shape before: 1 x 4, after 4
+        if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
+            # only ask for control authority a fixed time after transition
+            RNNControlNode.obtain_control_authority(ca_service=self.ca_service,
+                                                    joystick_mode_service=self.joystick_mode_service, )
+        RNNControlNode.send_vel_cmd(vel_cmd=vel_cmd,
                                     joystick_action_service=self.joystick_action_service)
         self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=msg.header.stamp.to_sec())
 

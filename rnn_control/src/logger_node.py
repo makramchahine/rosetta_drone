@@ -129,11 +129,13 @@ class Logger:
                 # make a directory to store pngs
                 image_dir = os.path.join(self._log_path, self._current_logname)
                 Path(image_dir).mkdir(parents=True, exist_ok=True)
+                self._last_transition_time = time
                 print("Started recording")
         elif self.state == LoggerState.RECORDING:
             if switch_state == SwitchState.LEFT:
                 self.state = LoggerState.STOPPED
                 self._csv_writer.close_writer()
+                self._last_transition_time = time
                 print("Stopped recording")
         else:
             raise ValueError(f"Got illegal state machine state {self.state}")
@@ -141,6 +143,13 @@ class Logger:
     @property
     def is_recording(self):
         return self.state == LoggerState.RECORDING
+
+    def time_since_transition(self, time: Optional[float] = None):
+        if time is None:
+            time = rospy.get_rostime().to_sec()
+
+        return time - self._last_transition_time
+
 
 
 class LoggerNode:
