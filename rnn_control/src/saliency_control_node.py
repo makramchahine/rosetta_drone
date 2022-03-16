@@ -111,8 +111,6 @@ class SaliencyControlNode:
                 # spin drone to look for object
                 vel_cmd[0, 3] = NOT_FOUND_TURN_RATE
 
-                # strip batch dim for logger, shape before: 1 x 4, after 4
-            print(f"time since transition {self.logger.time_since_transition()}")
             if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
                 # only ask for control authority a fixed time after transition
                 obtain_control_authority(ca_service=self.ca_service, joystick_mode_service=self.joystick_mode_service, )

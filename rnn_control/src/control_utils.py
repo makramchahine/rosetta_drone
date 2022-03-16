@@ -52,7 +52,7 @@ def send_vel_cmd(vel_cmd: ndarray, joystick_action_service: rospy.ServiceProxy):
     joyact_req.joystickCommand.x = vel_cmd[0][0]
     joyact_req.joystickCommand.y = -vel_cmd[0][1]
     joyact_req.joystickCommand.z = vel_cmd[0][2]
-    joyact_req.joystickCommand.yaw = -vel_cmd[0][3] * 180 / np.pi  # convert to radians
+    joyact_req.joystickCommand.yaw = -vel_cmd[0][3] * 180 / np.pi  # convert to degrees per sec from rad/sec
     res2 = joystick_action_service.call(joyact_req)
 
 
@@ -122,5 +122,6 @@ def find_checkpoint_path(params_path: str, checkpoint_path: Optional[str], model
             # case 2: ctrnn type, look for whole string
             # case 3: not named by trainign script, allow custom name of whole model.hdf5
             if f"-{model_name}_" in model or f"ctrnn_ctt-{model_name}_" in model or model_name == f"{model_name}.hdf5":
+                print(f"Using checkpoint path {model}")
                 return os.path.join(os.path.dirname(params_path), "headless", model)
         raise ValueError(f"Could not find model {model_name} in {params_path}")

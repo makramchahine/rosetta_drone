@@ -60,7 +60,7 @@ def init_dummy_services():
 
     rospy.Service('/flight_task_control', dji_srv.FlightTaskControl, lambda x: FlightTaskControlResponse())
     rospy.Service('set_joystick_mode', dji_srv.SetJoystickMode, lambda x: SetJoystickModeResponse())
-    rospy.Service('joystick_action', dji_srv.JoystickAction, echo_callback  )
+    rospy.Service('joystick_action', dji_srv.JoystickAction, echo_callback)
     rospy.Service('obtain_release_control_authority', dji_srv.ObtainControlAuthority,
                   lambda x: ObtainControlAuthorityResponse())
 
@@ -75,7 +75,8 @@ def send_start_recording():
     rospy.Timer(rospy.Duration(5), send_right)
 
 
-def publish_camera_messages(image_directory: str, use_data_rate: bool = False, loop_video: bool = False):
+def publish_camera_messages(image_directory: str, use_data_rate: bool = False, loop_video: bool = False,
+                            flip_channels: bool = False):
     pub = rospy.Publisher("dji_osdk_ros/main_camera_images", Image, queue_size=2)
     rospy.init_node("camera_emulator")
 
@@ -100,7 +101,10 @@ def publish_camera_messages(image_directory: str, use_data_rate: bool = False, l
         img, last_idx, done = load_next_image(contents, last_idx)
         if not done:
             # print('Published index %d' % last_idx)
-            img_data = np.array(img, dtype=np.uint8).ravel().tobytes()
+            img_numpy = np.array(img, dtype=np.uint8)
+            if flip_channels:
+                img_numpy = img_numpy[:, :, ::-1]
+            img_data = img_numpy.ravel().tobytes()
             img_msg = Image()
             img_msg.data = img_data
             img_msg.width = 1280
@@ -122,5 +126,6 @@ if __name__ == "__main__":
     publish_camera_messages(
         image_directory=rospy.get_param("image_directory"),
         use_data_rate=rospy.get_param("use_data_rate", default=False),
-        loop_video=rospy.get_param("loop_video", default=False)
+        loop_video=rospy.get_param("loop_video", default=False),
+        flip_channels=rospy.get_param("flip_channels", default=False),
     )
