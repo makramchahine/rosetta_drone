@@ -2,6 +2,7 @@
 import os
 import sys
 
+import cv2
 import dji_osdk_ros.srv as dji_srv
 import numpy as np
 import rospy
