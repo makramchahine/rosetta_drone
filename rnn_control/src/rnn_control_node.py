@@ -4,6 +4,8 @@ import sys
 import threading
 from typing import Optional
 
+# noinspection PyUnresolvedReferences
+import cv2  # need to import cv2 before tensorflow on drone or else crashes
 import dji_osdk_ros.srv as dji_srv
 import numpy as np
 import rospy
