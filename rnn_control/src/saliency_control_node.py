@@ -37,9 +37,9 @@ PAN_P = 0.01
 PAN_I = 0.0005
 PAN_D = 0.001
 
-FORWARD_P = 0.002
-FORWARD_I = 0.00005
-FORWARD_D = 0.0001
+FORWARD_P = 0.0004
+FORWARD_I = 0.000005
+FORWARD_D = 0.00001
 
 
 def poly_area(contour) -> float:
