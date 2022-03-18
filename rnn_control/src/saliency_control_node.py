@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import threading
 from typing import Optional, Tuple
 
 import cv2
@@ -86,36 +87,49 @@ class SaliencyControlNode:
         self.joystick_action_service = rospy.ServiceProxy('joystick_action', dji_srv.JoystickAction)
         self.ca_service = rospy.ServiceProxy('obtain_release_control_authority', dji_srv.ObtainControlAuthority)
 
-        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb, queue_size=1)
+        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self.image_cb, queue_size=1, buff_size=2**22)
+        # run image processing in separate thread
+        # state var updated by img_cb and read while sending control commands. Assume read/writes to this var are atomic
+        self.image_msg: Optional[Image] = None
+        thread = threading.Thread(target=self._send_control_commands, name=None, args=())
+        thread.daemon = True  # allow entire process to be ctrl-c ed to stop
+        thread.start()
+        print("Finished initializing")
         rospy.spin()
 
-    def image_cb(self, msg: Image):
-        if self.logger.is_recording:  # run network on image and control drone
-            im_smaller, im_network = process_image_network(msg)
-            obj = self.best_object(im_network=im_network, im_smaller=im_smaller)
-            vel_cmd = np.array([[0, 0, 0, 0]], dtype=np.float32)
-            if obj is not None:
-                centroid, area = obj
-                # centroid coords are horiz, vertical, but array storage shape is height x width
-                img_center = np.array([el // 2 for el in im_smaller.shape[:2]])[::-1]
-                # command to send is (forward [pitch], left [roll], up [throttle], counterclockwise [yaw])
-                # want commands to point drone in same direction as offset
-                roll_error = centroid[0] - img_center[0]
-                vel_cmd[0, 1] = self.roll_pid(roll_error)
-                throttle_error = centroid[1] - img_center[1]
-                vel_cmd[0, 2] = self.throttle_pid(throttle_error)
-                pitch_error = area - TARGET_AREA
-                vel_cmd[0, 0] = self.pitch_pid(pitch_error)
-                # for now, set yaw as 0 always
-            else:
-                # spin drone to look for object
-                vel_cmd[0, 3] = NOT_FOUND_TURN_RATE
+    def _send_control_commands(self):
+        while True:
+            if self.logger.is_recording and self.image_msg is not None:
+                latest_msg = self.image_msg  # get master copy of msg for this iteration
+                im_smaller, im_network = process_image_network(latest_msg)
+                obj = self.best_object(im_network=im_network, im_smaller=im_smaller)
+                vel_cmd = np.array([[0, 0, 0, 0]], dtype=np.float32)
+                if obj is not None:
+                    centroid, area = obj
+                    # centroid coords are horiz, vertical, but array storage shape is height x width
+                    img_center = np.array([el // 2 for el in im_smaller.shape[:2]])[::-1]
+                    # command to send is (forward [pitch], left [roll], up [throttle], counterclockwise [yaw])
+                    # want commands to point drone in same direction as offset
+                    roll_error = centroid[0] - img_center[0]
+                    vel_cmd[0, 1] = self.roll_pid(roll_error)
+                    throttle_error = centroid[1] - img_center[1]
+                    vel_cmd[0, 2] = self.throttle_pid(throttle_error)
+                    pitch_error = area - TARGET_AREA
+                    vel_cmd[0, 0] = self.pitch_pid(pitch_error)
+                    # for now, set yaw as 0 always
+                else:
+                    # spin drone to look for object
+                    vel_cmd[0, 3] = NOT_FOUND_TURN_RATE
 
-            if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
-                # only ask for control authority a fixed time after transition
-                obtain_control_authority(ca_service=self.ca_service, joystick_mode_service=self.joystick_mode_service, )
-            send_vel_cmd(vel_cmd=vel_cmd, joystick_action_service=self.joystick_action_service)
-            self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=msg.header.stamp.to_sec())
+                if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
+                    # only ask for control authority a fixed time after transition
+                    obtain_control_authority(ca_service=self.ca_service,
+                                             joystick_mode_service=self.joystick_mode_service, )
+                send_vel_cmd(vel_cmd=vel_cmd, joystick_action_service=self.joystick_action_service)
+                self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=latest_msg.header.stamp.to_sec())
+
+    def image_cb(self, msg: Image):
+        self.image_msg = msg
 
     def best_object(self, im_network: ndarray, im_smaller: Optional[ndarray] = None) -> Optional[Tuple[ndarray, float]]:
         """

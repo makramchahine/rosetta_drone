@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import os
 import sys
+import threading
+from typing import Optional
 
-import cv2
 import dji_osdk_ros.srv as dji_srv
 import numpy as np
 import rospy
@@ -53,35 +54,60 @@ class RNNControlNode:
         self.joystick_action_service = rospy.ServiceProxy('joystick_action', dji_srv.JoystickAction)
         self.ca_service = rospy.ServiceProxy('obtain_release_control_authority', dji_srv.ObtainControlAuthority)
 
-        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self._image_cb, queue_size=1)
+        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self._image_cb, queue_size=1, buff_size=2**22)
+
+        # run image processing in separate thread
+        # state var updated by img_cb and read while sending control commands. Assume read/writes to this var are atomic
+        self.image_msg: Optional[Image] = None
+        thread = threading.Thread(target=self._send_control_commands, name=None, args=())
+        thread.daemon = True  # allow entire process to be ctrl-c ed to stop
+        thread.start()
         print("Finished initialization of model and ros setup")
         rospy.spin()
 
+    def _send_control_commands(self):
+        """
+        Main logic loop that handles processing incoming images, running inference, and sending a control output
+        """
+        while True:
+            if self.image_msg is None:
+                # wait for 1st msg
+                continue
+
+            latest_msg = self.image_msg  # get master copy of msg for this iteration
+            im_smaller, im_network = process_image_network(latest_msg)
+
+            if self.logger.is_recording:  # run network on image and control drone
+                # run inference on im_network
+                out = self.single_step_model.predict([im_network, *self.hiddens])
+                vel_cmd = out[0]  # shape: 1 x 4
+                self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
+
+                if self.pitch_only:
+                    vel_cmd[0, 1:] = 0
+
+                # strip batch dim for logger, shape before: 1 x 4, after 4
+                if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
+                    # only ask for control authority a fixed time after transition
+                    obtain_control_authority(ca_service=self.ca_service,
+                                             joystick_mode_service=self.joystick_mode_service, )
+                send_vel_cmd(vel_cmd=vel_cmd,
+                             joystick_action_service=self.joystick_action_service)
+
+                self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=latest_msg.header.stamp.to_sec())
+
     def _image_cb(self, msg: Image):
-        im_smaller, im_network = process_image_network(msg)
-
-        if self.logger.is_recording:  # run network on image and control drone
-            # run inference on im_network
-            out = self.single_step_model.predict([im_network, *self.hiddens])
-            vel_cmd = out[0]  # shape: 1 x 4
-            self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
-
-            if self.pitch_only:
-                vel_cmd[0, 1:] = 0
-
-            # strip batch dim for logger, shape before: 1 x 4, after 4
-            if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
-                # only ask for control authority a fixed time after transition
-                obtain_control_authority(ca_service=self.ca_service,
-                                              joystick_mode_service=self.joystick_mode_service, )
-            send_vel_cmd(vel_cmd=vel_cmd,
-                              joystick_action_service=self.joystick_action_service)
-
-            self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=msg.header.stamp.to_sec())
+        """
+        Instead of having the processing code in image_cb, have it in another thread or else large delay is introduced
+        into image processing because of having to wait for the delay in image_cb in the queue and in the publishing
+        :param msg: ros img message to write
+        :return:
+        """
+        self.image_msg = msg
 
 
 if __name__ == "__main__":
-    log_path = rospy.get_param("log_path", default="~/flash")
+    log_path_ros = rospy.get_param("log_path", default="~/flash")
     params_path_ros = rospy.get_param("params_path")
     checkpoint_path_ros = rospy.get_param("checkpoint_path", default=None)
     model_name_ros = rospy.get_param("model_name", default=None)
@@ -92,5 +118,5 @@ if __name__ == "__main__":
     if log_suffix_ros == "":
         log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
 
-    node = RNNControlNode(log_path=log_path, params_path=params_path_ros,
+    node = RNNControlNode(log_path=log_path_ros, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros, pitch_only=pitch_only_ros)
