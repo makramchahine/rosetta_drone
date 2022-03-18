@@ -11,7 +11,8 @@ import numpy as np
 import rospy
 from sensor_msgs.msg import Image
 
-from control_utils import process_image_network, obtain_control_authority, send_vel_cmd, find_checkpoint_path
+from control_utils import process_image_network, obtain_control_authority, send_vel_cmd, find_checkpoint_path, \
+    generate_dummy_image
 from logger_node import Logger
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -40,7 +41,7 @@ class RNNControlNode:
         self.single_step_model = load_model_from_weights(model_params, checkpoint_path)
         self.hiddens = generate_hidden_list(model=self.single_step_model, return_numpy=True)
         # run dummy input through network to finish loading
-        dummy_image = np.random.rand(1, *IMAGE_SHAPE)
+        dummy_image = generate_dummy_image()
         self.single_step_model.predict([dummy_image, *self.hiddens])
         print('Loaded Model')
 
