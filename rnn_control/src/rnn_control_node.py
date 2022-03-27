@@ -1,76 +1,28 @@
 #!/usr/bin/env python3
-import json
 import os
 import sys
-from typing import Tuple, Optional
+import threading
+from typing import Optional
 
+# noinspection PyUnresolvedReferences
+import cv2  # need to import cv2 before tensorflow on drone or else crashes
 import dji_osdk_ros.srv as dji_srv
 import numpy as np
 import rospy
-from numpy import ndarray
 from sensor_msgs.msg import Image
 
-from logger_node import Logger, process_image
+from control_utils import process_image_network, obtain_control_authority, send_vel_cmd, find_checkpoint_path, \
+    generate_dummy_image
+from logger_node import Logger
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", ".."))
 sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
 from drone_causality.utils.model_utils import load_model_from_weights, generate_hidden_list, get_readable_name, \
     get_params_from_json
-
-# normalization constants
-MEAN = [0.41718618, 0.48529191, 0.38133072]
-VARIANCE = np.array([.057, .05, .061])
+from drone_causality.keras_models import IMAGE_SHAPE
 
 CONTROL_AUTHORITY_TIME = 3
-
-
-def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
-    """
-    Converts ros Image sensor message to numpy array, and performs rescaling and normalization that would ordinarily
-    be performed by tensorflow preprocessing layers but can't be used with this version of tf
-
-    :param msg: Ros Image sensor message
-    :return: Tuple of the numpy version of the processed image and also the rescaled and normalized version to be fed
-    into the network
-    """
-    std_dev = np.sqrt(VARIANCE)
-
-    im_smaller = process_image(msg)
-    im_network = im_smaller / 255
-    im_network = im_network - MEAN
-    im_network = im_network / std_dev  # norm layer ordinarily divdes by sqrt of var
-    # shape: (batch=1, h, w, c)
-    im_network = np.expand_dims(im_network, 0)  # add batch dimension
-    return im_smaller, im_network
-
-
-def find_checkpoint_path(params_path: str, checkpoint_path: Optional[str], model_name: Optional[str]) -> str:
-    """
-    Convenience function that if checkpoint_path is not passed, looks up model_name in the keys of the json at
-    params_path to prevent the user from having to type the whole modeo name into the roslaunch
-
-    :param params_path: path to params json relative to this script dir
-    :param checkpoint_path: path to model checkpoint. If this is passed, function does not look for model_name
-    :param model_name: name of model to look up
-    :return: path relative to this dir of most likely model name
-    """
-    if checkpoint_path is not None:
-        if model_name is not None:
-            print(f"Checkpoint path explicitly passed. Not using model name {model_name}")
-        return checkpoint_path
-    else:
-        assert model_name is not None, "Passed neither model name nor checkpoint path. Need at least 1"
-        with open(os.path.join(SCRIPT_DIR, params_path), "r") as f:
-            params_data = json.load(f)
-        models = params_data.keys()
-        for model in models:
-            # case 1: not ctrnn, just look for model name
-            # case 2: ctrnn type, look for whole string
-            # case 3: not named by trainign script, allow custom name of whole model.hdf5
-            if f"-{model_name}_" in model or f"ctrnn_ctt-{model_name}_" in model or model_name == f"{model_name}.hdf5":
-                return os.path.join(os.path.dirname(params_path), "headless", model)
-        raise ValueError(f"Could not find model {model_name} in {params_path}")
 
 
 class RNNControlNode:
@@ -88,6 +40,9 @@ class RNNControlNode:
         model_params.single_step = True
         self.single_step_model = load_model_from_weights(model_params, checkpoint_path)
         self.hiddens = generate_hidden_list(model=self.single_step_model, return_numpy=True)
+        # run dummy input through network to finish loading
+        dummy_image = generate_dummy_image()
+        self.single_step_model.predict([dummy_image, *self.hiddens])
         print('Loaded Model')
 
         # print strs
@@ -102,70 +57,60 @@ class RNNControlNode:
         self.joystick_action_service = rospy.ServiceProxy('joystick_action', dji_srv.JoystickAction)
         self.ca_service = rospy.ServiceProxy('obtain_release_control_authority', dji_srv.ObtainControlAuthority)
 
-        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self._image_cb, queue_size=1)
+        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self._image_cb, queue_size=1, buff_size=2**22)
+
+        # run image processing in separate thread
+        # state var updated by img_cb and read while sending control commands. Assume read/writes to this var are atomic
+        self.image_msg: Optional[Image] = None
+        thread = threading.Thread(target=self._send_control_commands, name=None, args=())
+        thread.daemon = True  # allow entire process to be ctrl-c ed to stop
+        thread.start()
         print("Finished initialization of model and ros setup")
         rospy.spin()
 
+    def _send_control_commands(self):
+        """
+        Main logic loop that handles processing incoming images, running inference, and sending a control output
+        """
+        while True:
+            if self.image_msg is None:
+                # wait for 1st msg
+                continue
+
+            latest_msg = self.image_msg  # get master copy of msg for this iteration
+            im_smaller, im_network = process_image_network(latest_msg)
+
+            if self.logger.is_recording:  # run network on image and control drone
+                # run inference on im_network
+                out = self.single_step_model.predict([im_network, *self.hiddens])
+                vel_cmd = out[0]  # shape: 1 x 4
+                self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
+
+                if self.pitch_only:
+                    vel_cmd[0, 1:] = 0
+
+                # strip batch dim for logger, shape before: 1 x 4, after 4
+                if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
+                    # only ask for control authority a fixed time after transition
+                    obtain_control_authority(ca_service=self.ca_service,
+                                             joystick_mode_service=self.joystick_mode_service, )
+                send_vel_cmd(vel_cmd=vel_cmd,
+                             joystick_action_service=self.joystick_action_service)
+
+                self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=latest_msg.header.stamp.to_sec())
+
     def _image_cb(self, msg: Image):
-        im_smaller, im_network = process_image_network(msg)
-
-        if self.logger.is_recording:  # run network on image and control drone
-            # run inference on im_network
-            out = self.single_step_model.predict([im_network, *self.hiddens])
-            vel_cmd = out[0]  # shape: 1 x 4
-            self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
-
-            if self.pitch_only:
-                vel_cmd[0, 1:] = 0
-
-            # strip batch dim for logger, shape before: 1 x 4, after 4
-            if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
-                # only ask for control authority a fixed time after transition
-                self.obtain_control_authority(ca_service=self.ca_service,
-                                              joystick_mode_service=self.joystick_mode_service, )
-            self.send_vel_cmd(vel_cmd=vel_cmd,
-                              joystick_action_service=self.joystick_action_service)
-
-            self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=msg.header.stamp.to_sec())
-
-    @staticmethod
-    def obtain_control_authority(ca_service: rospy.ServiceProxy, joystick_mode_service: rospy.ServiceProxy, ):
-        ca_req = dji_srv.ObtainControlAuthorityRequest()
-        ca_req.enable_obtain = True
-        ca_res = ca_service.call(ca_req)
-
-        joymode_req = dji_srv.SetJoystickModeRequest()
-        joymode_req.horizontal_mode = dji_srv.SetJoystickModeRequest.HORIZONTAL_VELOCITY
-        joymode_req.vertical_mode = dji_srv.SetJoystickModeRequest.VERTICAL_VELOCITY
-        joymode_req.yaw_mode = dji_srv.SetJoystickModeRequest.YAW_RATE
-        joymode_req.horizontal_coordinate = dji_srv.SetJoystickModeRequest.HORIZONTAL_BODY
-        joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
-        res1 = joystick_mode_service.call(joymode_req)
-
-    @staticmethod
-    def send_vel_cmd(vel_cmd: ndarray, joystick_action_service: rospy.ServiceProxy):
         """
-        Convenience script that invokes ros services to send vel_cmd to the drone
-
-        :param vel_cmd: shape 1x4, with elements forward x left x up x counterclockwise that represents control signal
-        :param ca_service: service proxy for obtain_release_control_authority
-        :param joystick_mode_service: service proxy for set_joystick_mode
-        :param joystick_action_service: service proxy for joystick_action
-        :return: N/A
+        Instead of having the processing code in image_cb, have it in another thread or else large delay is introduced
+        into image processing because of having to wait for the delay in image_cb in the queue and in the publishing
+        :param msg: ros img message to write
+        :return:
         """
-        # construct dji velocity command
-        # Note drone takes coordinates in forward x right x up x clockwise but we are given
-        # forward x left x up x counterclockwise because this is what we use in training. Reverse yaw and roll
-        joyact_req = dji_srv.JoystickActionRequest()
-        joyact_req.joystickCommand.x = vel_cmd[0][0]
-        joyact_req.joystickCommand.y = -vel_cmd[0][1]
-        joyact_req.joystickCommand.z = vel_cmd[0][2]
-        joyact_req.joystickCommand.yaw = -vel_cmd[0][3] * 180 / np.pi
-        res2 = joystick_action_service.call(joyact_req)
+        self.image_msg = msg
 
 
 if __name__ == "__main__":
-    log_path = rospy.get_param("log_path", default="~/flash")
+    log_path_ros = rospy.get_param("log_path", default="~/flash")
     params_path_ros = rospy.get_param("params_path")
     checkpoint_path_ros = rospy.get_param("checkpoint_path", default=None)
     model_name_ros = rospy.get_param("model_name", default=None)
@@ -176,5 +121,5 @@ if __name__ == "__main__":
     if log_suffix_ros == "":
         log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
 
-    node = RNNControlNode(log_path=log_path, params_path=params_path_ros,
+    node = RNNControlNode(log_path=log_path_ros, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros, pitch_only=pitch_only_ros)
