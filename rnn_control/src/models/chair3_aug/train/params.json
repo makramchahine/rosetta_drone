@@ -1,0 +1,3 @@
+{
+  "rev-0_model-ncp_seq-64_opt-adam_lr-0.000291_crop-0.000000_epoch-190_val-loss:0.0797_train-loss:0.0085_mse:0.0085_2022:03:27:23:41:00.hdf5": "NCPParams(seq_len=64, image_shape=(144, 256, 3), augmentation_params={'noise': 0.05}, batch_size=None, single_step=False, no_norm_layer=False, seed=22224)"
+}
