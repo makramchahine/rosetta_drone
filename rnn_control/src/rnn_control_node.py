@@ -27,7 +27,7 @@ CONTROL_AUTHORITY_TIME = 3
 
 class RNNControlNode:
     def __init__(self, params_path: str, checkpoint_path: str, log_path: str, log_suffix: str = "",
-                 pitch_only: bool = False):
+                 pitch_only: bool = False, yaw_multiplier: float = 1.0):
         rospy.init_node("rnn_control_node")
 
         # get model params and load model
@@ -50,6 +50,12 @@ class RNNControlNode:
         self.logger = Logger(log_path=log_path, log_suffix=f"_{readable_model_name}{log_suffix}")
 
         self.pitch_only = pitch_only
+        if pitch_only:
+            print("Only sending pitch commands")
+
+        self.yaw_multiplier = yaw_multiplier
+        if yaw_multiplier != 1.0:
+            print(f"Using yaw multiplier of {yaw_multiplier}")
 
         # init ros
         self.velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
@@ -57,7 +63,7 @@ class RNNControlNode:
         self.joystick_action_service = rospy.ServiceProxy('joystick_action', dji_srv.JoystickAction)
         self.ca_service = rospy.ServiceProxy('obtain_release_control_authority', dji_srv.ObtainControlAuthority)
 
-        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self._image_cb, queue_size=1, buff_size=2**22)
+        rospy.Subscriber('dji_osdk_ros/main_camera_images', Image, self._image_cb, queue_size=1, buff_size=2 ** 22)
 
         # run image processing in separate thread
         # state var updated by img_cb and read while sending control commands. Assume read/writes to this var are atomic
@@ -86,8 +92,11 @@ class RNNControlNode:
                 vel_cmd = out[0]  # shape: 1 x 4
                 self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
 
+                # mutate vel_cmd according to options
                 if self.pitch_only:
                     vel_cmd[0, 1:] = 0
+
+                vel_cmd[0, 3] = vel_cmd[0, 3] * self.yaw_multiplier
 
                 # strip batch dim for logger, shape before: 1 x 4, after 4
                 if self.logger.time_since_transition() < CONTROL_AUTHORITY_TIME:
@@ -116,10 +125,12 @@ if __name__ == "__main__":
     model_name_ros = rospy.get_param("model_name", default=None)
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     pitch_only_ros = rospy.get_param("pitch_only", default=False)
+    yaw_multiplier_ros = rospy.get_param("yaw_multiplier", default=1.0)
     checkpoint_path_ros = find_checkpoint_path(params_path=params_path_ros, checkpoint_path=checkpoint_path_ros,
                                                model_name=model_name_ros)
     if log_suffix_ros == "":
         log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
 
     node = RNNControlNode(log_path=log_path_ros, params_path=params_path_ros,
-                          checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros, pitch_only=pitch_only_ros)
+                          checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros, pitch_only=pitch_only_ros,
+                          yaw_multiplier=yaw_multiplier_ros)

@@ -17,7 +17,7 @@ def stop_callback():
 
 def test_all_models():
     # for now, assume camera emulator node running
-    jsons = Path(os.path.join(SCRIPT_DIR, "..", "src", "models")).rglob("chair4_fine/**/*.json")
+    jsons = Path(os.path.join(SCRIPT_DIR, "..", "src", "models")).rglob("*.json")
     for model_json in jsons:
         abs_path = str(model_json.resolve())
         with open(abs_path, "r") as f:

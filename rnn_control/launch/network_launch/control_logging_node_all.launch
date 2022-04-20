@@ -1,6 +1,0 @@
-<launch>
-    <param name="log_path" type="str" value="/home/dji/flash/"/>
-    <param name="log_suffix" type="str" value="_all"/>
-    <param name="params_path" type="str" value="models/chair3_all/train/params.json"/>
-    <node pkg="rnn_control" type="rnn_control_node.py" name="rnn_control_node" output="screen"/>
-</launch>

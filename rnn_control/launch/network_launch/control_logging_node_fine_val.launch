@@ -1,0 +1,7 @@
+<launch>
+    <param name="log_path" type="str" value="/home/dji/flash/"/>
+    <param name="log_suffix" type="str" value="_fine_val"/>
+    <param name="params_path" type="str" value="models/chair4_fine/val/params.json"/>
+    <param name="yaw_multiplier" type="double" value="0.5"/>
+    <node pkg="rnn_control" type="rnn_control_node.py" name="rnn_control_node" output="screen"/>
+</launch>
