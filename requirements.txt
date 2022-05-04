@@ -1,1 +1,14 @@
+opencv-python~=4.5.4.58
+numpy~=1.19.5
+tensorflow-gpu>=2.2
+pillow~=8.4.0
+yaml~=0.2.5
+pyyaml~=6.0
+matplotlib~=3.5.0
+pandas~=1.4.1
+scipy~=1.7.3
+ffio~=0.1.0
+tqdm~=4.62.3
 simple-pid
+tensorflow-probability
+keras-tcn
