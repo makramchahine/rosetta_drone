@@ -1,5 +1,5 @@
 # Rosetta Drone
-This repository contains all code run onboard the drone to complete online testinf for the paper "Robust Visual Flight Navigation with Liquid Neural Networks".
+This repository contains all code run onboard the drone to complete online testinf for the paper "Robust Visual Flight Navigation with Liquid Neural Networks". For training/offline analysis code, see [this repository](https://github.com/dolphonie/drone_causality)
 
 ## Installation Guide
 ### Hardware
@@ -59,6 +59,7 @@ If using conda, setup python environment with
 
 ~~~
 conda env create -f environment.yml
+conda activate matrice
 ~~~
 
 This conda environment above is for x86-based machines, and not for the drone hardware platform. For the ARM-based Manifold, instead run
