@@ -9,6 +9,7 @@ from time import time
 import cv2  # need to import cv2 before tensorflow on drone or else crashes
 import dji_osdk_ros.srv as dji_srv
 import numpy as np
+from numpy import ndarray
 import rospy
 from sensor_msgs.msg import Image
 
