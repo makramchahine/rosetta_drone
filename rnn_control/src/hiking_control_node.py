@@ -28,8 +28,8 @@ from drone_causality.utils.model_utils import load_model_from_weights, generate_
 
 # Constants for hike step saliency condition
 MIN_AREA = 50  # to mask candidate contours that have area less than this
-TURN_RATE = 5 # turn rate to look at new target
-TURN_DURATION = 3 # seconds of turning
+UP_VEL = 0.1 # turn rate to look at new target
+UP_DURATION = 8 # seconds of turning
 TARGET_AREA = 1340  # based on chair size in snowy run
 CONTROL_AUTHORITY_TIME = 3
 
@@ -47,7 +47,7 @@ def poly_area(contour) -> float:
 
 class HikingControlNode:
     def __init__(self, params_path: str, checkpoint_path: str, log_path: str, log_suffix: str = "",
-                 pitch_only: bool = False, yaw_multiplier: float = 1.0, hike_directions: list = [0] ):
+                 pitch_only: bool = False, yaw_multiplier: float = 1.0):
         rospy.init_node("rnn_control_node")
 
         # get model params and load model
@@ -79,12 +79,9 @@ class HikingControlNode:
         if yaw_multiplier != 1.0:
             print(f"Using yaw multiplier of {yaw_multiplier}")
 
-        # get sequence of hike turning directions
-        # list of -1s (for right turn) and 1s (for left turn) in hike order
-        # length of this list is equal to number of targets minus 1 
-        self.hike_directions = hike_directions
-        self.turn_to_next = False
-        self.time_turning = 0.0
+
+        self.go_to_next = False
+        self.time_rising = 0.0
 
         # init ros
         self.velocity_service = rospy.ServiceProxy('/flight_task_control', dji_srv.FlightTaskControl)
@@ -112,17 +109,17 @@ class HikingControlNode:
                 latest_msg = self.image_msg  # get master copy of msg for this iteration
                 im_smaller, im_network = process_image_network(latest_msg)
 
-                if not self.turn_to_next:
+                if not self.go_to_next:
                     # detect object/target in image
                     obj = self.best_object(im_network=im_network, im_smaller=im_smaller)
                     if obj is not None:
                         centroid, area = obj
                         # Decide whether target has been attended to by looking at saliencey area
                         # if empty direction list, we are attending to the ultimate target
-                        if area > TARGET_AREA and self.hike_directions:
-                            self.turn_to_next = True
+                        if area > TARGET_AREA:
+                            self.go_to_next = True
                             tic = time.time()
-                            vel_cmd = np.array([[0, 0, 0, self.hike_directions.pop(0)*TURN_RATE]], dtype=np.float32)
+                            vel_cmd = np.array([[0, 0, UP_VEL, 0]], dtype=np.float32)
                         # Else we are still not close enough (or on last target), use network to continue navigation
                         else:    
                             # run inference on im_network
@@ -137,14 +134,14 @@ class HikingControlNode:
 
                 else: # switching targets
                     delta_t = time.time() - tic
-                    if delta_t > TURN_DURATION:
-                        self.turn_to_next = False
+                    if delta_t > UP_DURATION:
+                        self.go_to_next = False
                         # run inference on im_network
                         out = self.single_step_model.predict([im_network, *self.hiddens])
                         vel_cmd = out[0]  # shape: 1 x 4
                         self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
                     else: # not finished turning
-                        vel_cmd = np.array([[0, 0, 0, self.hike_directions.pop(0)*TURN_RATE]], dtype=np.float32)
+                        vel_cmd = np.array([[0, 0, UP_VEL, 0]], dtype=np.float32)
 
                 # mutate vel_cmd according to options
                 if self.pitch_only:
@@ -232,7 +229,6 @@ if __name__ == "__main__":
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     pitch_only_ros = rospy.get_param("pitch_only", default=False)
     yaw_multiplier_ros = rospy.get_param("yaw_multiplier", default=1.0)
-    hike_directions_ros = rospy.get_param("hike_directions", default=0)
     checkpoint_path_ros = find_checkpoint_path(params_path=params_path_ros, checkpoint_path=checkpoint_path_ros,
                                                model_name=model_name_ros)
     if log_suffix_ros == "":
@@ -240,4 +236,4 @@ if __name__ == "__main__":
 
     node = HikingControlNode(log_path=log_path_ros, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros, pitch_only=pitch_only_ros,
-                          yaw_multiplier=yaw_multiplier_ros, hike_directions=hike_directions_ros)
+                          yaw_multiplier=yaw_multiplier_ros)
