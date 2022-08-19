@@ -112,7 +112,7 @@ def generate_dummy_image() -> ndarray:
 def saliency_center(img_out_saliency):
     # convert the grayscale image to binary image
 
-    ret, thresh = cv2.threshold(img_out_saliency, 0, 255, 0)
+    ret, thresh = cv2.threshold(img_out_saliency, 100, 255, cv2.THRESH_BINARY)
 
     # calculate moments of binary image
     M = cv2.moments(thresh)
