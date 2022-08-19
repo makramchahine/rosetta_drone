@@ -21,8 +21,8 @@ sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
 from drone_causality.utils.model_utils import load_model_from_weights, generate_hidden_list, get_readable_name, \
     get_params_from_json
 from drone_causality.keras_models import IMAGE_SHAPE
-from drone_causality.analysis.visual_backprop import get_conv_head, visualbackprop_activations, convert_to_color_frame
-
+from drone_causality.analysis.visual_backprop import get_conv_head, compute_visualbackprop
+from drone_causality.analysis.vis_utils import convert_to_color_frame
 
 CONTROL_AUTHORITY_TIME = 3
 GUARD = False
@@ -120,11 +120,8 @@ class RNNControlNode:
                 vel_cmd[0, 3] = vel_cmd[0, 3] * self.yaw_multiplier
 
                 # GET 2 SALIENCY MAPS
-                activations = self.conv_head.predict(im_network)
-                saliency = visualbackprop_activations(self.conv_head, activations)
-
-                activations_bis = self.conv_head_bis.predict(im_network)
-                saliency_bis = visualbackprop_activations(self.conv_head_bis, activations_bis)
+                saliency = compute_visualbackprop(im_network, self.conv_head)
+                saliency_bis = compute_visualbackprop(im_network, self.conv_head_bis)
 
                 sal = convert_to_color_frame(saliency)
                 sal = cv2.resize(sal, (256 * 2, 144 * 2))
@@ -138,7 +135,7 @@ class RNNControlNode:
                 c = np.array(saliency_center(saliency))
                 c_bis = np.array(saliency_center(saliency))
 
-                d = np.linalg.norm(c-cbis)
+                d = np.linalg.norm(c-c_bis)
                 print(f"Distance between saliency centers: {d}")
                 if d > THRESHOLD:
                     if not GUARD:
