@@ -111,7 +111,7 @@ def generate_dummy_image() -> ndarray:
 
 def saliency_center(img_out_saliency):
     # calculate moments of binary image
-    M = cv2.moments(thresh)
+    M = cv2.moments(img_out_saliency)
 
     # calculate x,y coordinate of center
     if M["m00"] != 0:

@@ -183,8 +183,7 @@ if __name__ == "__main__":
     checkpoint_path_ros = None
     checkpoint_path_rosbis = None
     model_name_ros = rospy.get_param("model_name", default=None)
-    print(type(model_name_ros))
-    model_name_rosbis = "lstm"
+    model_name_rosbis = rospy.get_param("model_name_bis", default=None)
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     pitch_only_ros = rospy.get_param("pitch_only", default=False)
     yaw_multiplier_ros = rospy.get_param("yaw_multiplier", default=1.0)
