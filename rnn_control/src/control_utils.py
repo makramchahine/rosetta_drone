@@ -4,6 +4,7 @@ import os
 import sys
 from typing import Tuple, Optional
 
+import cv2
 import PIL
 import PIL.Image
 import dji_osdk_ros.srv as dji_srv
