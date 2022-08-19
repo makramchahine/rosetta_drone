@@ -21,6 +21,8 @@ sys.path.append(os.path.join(SCRIPT_DIR, "..", "..", "drone_causality"))
 from drone_causality.utils.model_utils import load_model_from_weights, generate_hidden_list, get_readable_name, \
     get_params_from_json
 from drone_causality.keras_models import IMAGE_SHAPE
+from drone_causality.analysis.visual_backprop import get_conv_head, visualbackprop_activations, convert_to_color_frame
+
 
 CONTROL_AUTHORITY_TIME = 3
 GUARD = False
