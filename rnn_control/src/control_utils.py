@@ -35,10 +35,22 @@ def obtain_control_authority(ca_service: rospy.ServiceProxy, joystick_mode_servi
     joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
     res1 = joystick_mode_service.call(joymode_req)
 
+def release_control_authority(ca_service: rospy.ServiceProxy, joystick_mode_service: rospy.ServiceProxy, ):
+    ca_req = dji_srv.ObtainControlAuthorityRequest()
+    ca_req.enable_obtain = False
+    ca_res = ca_service.call(ca_req)
+
+    joymode_req = dji_srv.SetJoystickModeRequest()
+    joymode_req.horizontal_mode = dji_srv.SetJoystickModeRequest.HORIZONTAL_VELOCITY
+    joymode_req.vertical_mode = dji_srv.SetJoystickModeRequest.VERTICAL_VELOCITY
+    joymode_req.yaw_mode = dji_srv.SetJoystickModeRequest.YAW_RATE
+    joymode_req.horizontal_coordinate = dji_srv.SetJoystickModeRequest.HORIZONTAL_BODY
+    joymode_req.stable_mode = dji_srv.SetJoystickModeRequest.STABLE_ENABLE
+    res1 = joystick_mode_service.call(joymode_req)
+
 def send_vel_cmd(vel_cmd: ndarray, joystick_action_service: rospy.ServiceProxy):
     """
     Convenience script that invokes ros services to send vel_cmd to the drone
-
     :param vel_cmd: shape 1x4, with elements forward x left x up x counterclockwise that represents control signal
     :param ca_service: service proxy for obtain_release_control_authority
     :param joystick_mode_service: service proxy for set_joystick_mode
@@ -78,7 +90,6 @@ def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
     """
     Converts ros Image sensor message to numpy array, and performs rescaling and normalization that would ordinarily
     be performed by tensorflow preprocessing layers but can't be used with this version of tf
-
     :param msg: Ros Image sensor message
     :return: Tuple of the numpy version of the processed image and also the rescaled and normalized version to be fed
     into the network
@@ -97,12 +108,28 @@ def process_image_network(msg: Image) -> Tuple[ndarray, ndarray]:
 def generate_dummy_image() -> ndarray:
     return np.random.rand(1, *IMAGE_SHAPE)
 
+def saliency_center(img_out_saliency):
+    # convert the grayscale image to binary image
+
+    ret, thresh = cv2.threshold(img_out_saliency, 0, 255, 0)
+
+    # calculate moments of binary image
+    M = cv2.moments(thresh)
+
+    # calculate x,y coordinate of center
+    if M["m00"] != 0:
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+    else:
+        # set values as what you need in the situation
+        cX, cY = 0, 0
+
+    return [cX, cY]
 
 def find_checkpoint_path(params_path: str, checkpoint_path: Optional[str], model_name: Optional[str]) -> str:
     """
     Convenience function that if checkpoint_path is not passed, looks up model_name in the keys of the json at
     params_path to prevent the user from having to type the whole modeo name into the roslaunch
-
     :param params_path: path to params json relative to this script dir
     :param checkpoint_path: path to model checkpoint. If this is passed, function does not look for model_name
     :param model_name: name of model to look up
