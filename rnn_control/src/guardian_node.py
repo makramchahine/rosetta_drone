@@ -122,6 +122,8 @@ class RNNControlNode:
                 # GET 2 SALIENCY MAPS
                 saliency = compute_visualbackprop(im_network, self.conv_head)
                 saliency_bis = compute_visualbackprop(im_network, self.conv_head_bis)
+                saliency = saliency.numpy()
+                saliency_bis = saliency_bis.numpy()
 
                 sal = convert_to_color_frame(saliency)
                 sal = cv2.resize(sal, (256 * 2, 144 * 2))
@@ -133,7 +135,7 @@ class RNNControlNode:
 
                 # COMPARE SALIENCY CENTERS
                 c = np.array(saliency_center(saliency))
-                c_bis = np.array(saliency_center(saliency))
+                c_bis = np.array(saliency_center(saliency_bis))
 
                 d = np.linalg.norm(c-c_bis)
                 print(f"Distance between saliency centers: {d}")
