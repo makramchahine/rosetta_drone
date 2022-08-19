@@ -125,6 +125,8 @@ class RNNControlNode:
                 saliency_bis = compute_visualbackprop(im_network, self.conv_head_bis)
                 saliency = saliency.numpy()
                 saliency_bis = saliency_bis.numpy()
+                ret, saliency = cv2.threshold(saliency, 50, 255, cv2.THRESH_BINARY)
+                ret_bis, saliency_bis = cv2.threshold(saliency_bis, 50, 255, cv2.THRESH_BINARY)
 
                 sal = convert_to_color_frame(saliency)
                 sal = cv2.resize(sal, (256 * 2, 144 * 2))
