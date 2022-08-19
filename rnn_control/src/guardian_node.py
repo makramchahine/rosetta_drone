@@ -25,14 +25,15 @@ from drone_causality.analysis.visual_backprop import get_conv_head, compute_visu
 from drone_causality.analysis.vis_utils import convert_to_color_frame
 
 CONTROL_AUTHORITY_TIME = 3
-GUARD = False
-THRESHOLD = 999
 
 
 class RNNControlNode:
     def __init__(self, params_path: str, checkpoint_path: str, params_path_bis: str, checkpoint_path_bis: str, log_path: str, log_suffix: str = "",
                  pitch_only: bool = False, yaw_multiplier: float = 1.0):
         rospy.init_node("rnn_control_node")
+
+        self.guard = False
+        self.threshold = 999
 
         # get model params and load model
         # make params path and checkpoint path relative
@@ -139,21 +140,21 @@ class RNNControlNode:
 
                 d = np.linalg.norm(c-c_bis)
                 print(f"Distance between saliency centers: {d}")
-                if d > THRESHOLD:
-                    if not GUARD:
+                if d > self.threshold:
+                    if not self.guard:
                         # strip batch dim for logger, shape before: 1 x 4, after 4
                         obtain_control_authority(ca_service=self.ca_service,
                                                  joystick_mode_service=self.joystick_mode_service, )
-                        GUARD=True
+                        self.guard=True
 
                     send_vel_cmd(vel_cmd=vel_cmd,
                                  joystick_action_service=self.joystick_action_service)
 
                 else:
-                    if GUARD:
+                    if self.guard:
                         release_control_authority(ca_service=self.ca_service,
                                                   joystick_mode_service=self.joystick_mode_service, )
-                        GUARD=False
+                        self.guard=False
 
                     vel_cmd[0, 0] = 0.0
                     vel_cmd[0, 1] = 0.0
