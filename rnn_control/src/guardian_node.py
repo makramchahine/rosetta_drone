@@ -183,13 +183,15 @@ if __name__ == "__main__":
     checkpoint_path_ros = None
     checkpoint_path_rosbis = None
     model_name_ros = rospy.get_param("model_name", default=None)
+    print(type(model_name_ros))
+    model_name_rosbis = "lstm"
     log_suffix_ros = rospy.get_param("log_suffix", default="")
     pitch_only_ros = rospy.get_param("pitch_only", default=False)
     yaw_multiplier_ros = rospy.get_param("yaw_multiplier", default=1.0)
     checkpoint_path_ros = find_checkpoint_path(params_path=params_path_ros, checkpoint_path=checkpoint_path_ros,
                                                model_name=model_name_ros)
     checkpoint_path_rosbis = find_checkpoint_path(params_path=params_path_rosbis, checkpoint_path=checkpoint_path_rosbis,
-                                               model_name=model_name_ros)
+                                               model_name=model_name_rosbis)
     if log_suffix_ros == "":
         log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
 
