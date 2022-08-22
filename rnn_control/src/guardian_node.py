@@ -11,7 +11,7 @@ import numpy as np
 import rospy
 from sensor_msgs.msg import Image
 
-from control_utils import process_image_network, obtain_control_authority, send_vel_cmd, find_checkpoint_path, \
+from control_utils import process_image_network, obtain_control_authority, release_control_authority, send_vel_cmd, find_checkpoint_path, \
     generate_dummy_image, saliency_center
 from logger_node import Logger
 
@@ -33,8 +33,10 @@ class RNNControlNode:
         rospy.init_node("rnn_control_node")
 
         self.guard = False
-        self.threshold = 999
-
+        self.threshold = 30
+        self.t0 = -9999999
+        self.condi = False
+        self.guardian_time = 6
         # get model params and load model
         # make params path and checkpoint path relative
         params_path = os.path.join(SCRIPT_DIR, params_path)
@@ -119,52 +121,63 @@ class RNNControlNode:
                     vel_cmd[0, 1:] = 0
 
                 vel_cmd[0, 3] = vel_cmd[0, 3] * self.yaw_multiplier
+                
+                if not self.guard:
+                    # GET 2 SALIENCY MAPS
+                    saliency = compute_visualbackprop(im_network, self.conv_head)
+                    saliency_bis = compute_visualbackprop(im_network, self.conv_head_bis)
+                    saliency = saliency.numpy()
+                    saliency_bis = saliency_bis.numpy()
+                    #ret, saliency = cv2.threshold(saliency, 50, 255, cv2.THRESH_BINARY)
+                    #ret_bis, saliency_bis = cv2.threshold(saliency_bis, 50, 255, cv2.THRESH_BINARY)
 
-                # GET 2 SALIENCY MAPS
-                saliency = compute_visualbackprop(im_network, self.conv_head)
-                saliency_bis = compute_visualbackprop(im_network, self.conv_head_bis)
-                saliency = saliency.numpy()
-                saliency_bis = saliency_bis.numpy()
-                ret, saliency = cv2.threshold(saliency, 50, 255, cv2.THRESH_BINARY)
-                ret_bis, saliency_bis = cv2.threshold(saliency_bis, 50, 255, cv2.THRESH_BINARY)
+                    #sal = convert_to_color_frame(saliency)
+                    #sal = cv2.resize(sal, (256 * 3, 144 * 3))
+                    #sal_bis = convert_to_color_frame(saliency_bis)
+                    #sal_bis = cv2.resize(sal_bis, (256 * 3, 144 * 3))
 
-                sal = convert_to_color_frame(saliency)
-                sal = cv2.resize(sal, (256 * 2, 144 * 2))
-                sal_bis = convert_to_color_frame(saliency_bis)
-                sal_bis = cv2.resize(sal_bis, (256 * 2, 144 * 2))
+                    #cv2.imshow("GUARDIAN", sal)
+                    #cv2.imshow("HUUGHMAN", sal_bis)
 
-                cv2.imshow("GUARDIAN", sal)
-                cv2.imshow("HUUGHMAN", sal_bis)
+                    # COMPARE SALIENCY CENTERS
+                    c = np.array(saliency_center(saliency))
+                    c_bis = np.array(saliency_center(saliency_bis))
 
-                # COMPARE SALIENCY CENTERS
-                c = np.array(saliency_center(saliency))
-                c_bis = np.array(saliency_center(saliency_bis))
-
-                d = np.linalg.norm(c-c_bis)
-                print(f"Distance between saliency centers: {d}")
-                if d > self.threshold:
+                    d = np.linalg.norm(c-c_bis)
+                    self.condi = d>self.threshold
+                else:
+                    self.condi = False
+               
+                if self.condi:
                     if not self.guard:
                         # strip batch dim for logger, shape before: 1 x 4, after 4
                         obtain_control_authority(ca_service=self.ca_service,
                                                  joystick_mode_service=self.joystick_mode_service, )
                         self.guard=True
+                        self.t0 = rospy.Time.now().to_sec()
 
                     send_vel_cmd(vel_cmd=vel_cmd,
                                  joystick_action_service=self.joystick_action_service)
 
                 else:
-                    if self.guard:
-                        release_control_authority(ca_service=self.ca_service,
-                                                  joystick_mode_service=self.joystick_mode_service, )
-                        self.guard=False
+                    t = rospy.Time.now().to_sec()
+                    if (t-self.t0)>self.guardian_time:
+                        if self.guard:
+                            release_control_authority(ca_service=self.ca_service,
+                                                      joystick_mode_service=self.joystick_mode_service, )
+                            self.guard=False
 
-                    vel_cmd[0, 0] = 0.0
-                    vel_cmd[0, 1] = 0.0
-                    vel_cmd[0, 2] = 0.0
-                    vel_cmd[0, 3] = 0.0
+                        vel_cmd[0, 0] = 0.0
+                        vel_cmd[0, 1] = 0.0
+                        vel_cmd[0, 2] = 0.0
+                        vel_cmd[0, 3] = 0.0
+                    else:
+                        send_vel_cmd(vel_cmd=vel_cmd,
+                                 joystick_action_service=self.joystick_action_service)
 
+                print(self.guard, f"Distance between saliency centers: {d}", vel_cmd)
                 self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=latest_msg.header.stamp.to_sec())
-                cv2.waitKey(1)
+                #cv2.waitKey(1)
 
     def _image_cb(self, msg: Image):
         """
