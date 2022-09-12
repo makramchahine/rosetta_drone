@@ -147,7 +147,7 @@ class RNNControlNode:
                         ret, saliency = cv2.threshold(saliency, 50, 255, cv2.THRESH_BINARY)
                         ret_bis, saliency_bis = cv2.threshold(saliency_bis, 50, 255, cv2.THRESH_BINARY)
 
-                        obj = self.best_object(thresh=saliency, im_smaller=im_smaller)
+                        obj = self.best_object(saliency=saliency, im_smaller=im_smaller)
                         if obj is not None:
                             centroid, area = obj
                             print(centroid)
@@ -228,7 +228,7 @@ class RNNControlNode:
         """
         self.image_msg = msg
 
-    def best_object(self, thresh: np.ndarray, im_smaller: Optional[np.ndarray] = None) -> Optional[Tuple[np.ndarray, float]]:
+    def best_object(self, saliencie: np.ndarray, im_smaller: Optional[np.ndarray] = None) -> Optional[Tuple[np.ndarray, float]]:
         """
         Func that finds the contour in the blurred saliency map that has the highest average pixel value and returns
         its centroid and area
@@ -240,13 +240,13 @@ class RNNControlNode:
         :return: centroid (ndarray of 2 els (x, y) where x is vertical and y is horizontal) and area, float representing
         area of polygon
         """
-        # # use for normalize, not color convert
+        # use for normalize, not color convert
         # saliency = convert_to_color_frame(compute_visualbackprop(img=im_network, activation_model=self.conv_head))
-        #
-        # # find contours in saliency map
-        # saliency_gray = cv2.cvtColor(saliency, cv2.COLOR_BGR2GRAY)  # shape: h x w
-        # blurred = cv2.blur(saliency_gray, (10, 10))
-        # ret, thresh = cv2.threshold(blurred, 50, 255, cv2.THRESH_BINARY)
+
+        # find contours in saliency map
+        saliency_gray = cv2.cvtColor(saliency, cv2.COLOR_BGR2GRAY)  # shape: h x w
+        blurred = cv2.blur(saliency_gray, (10, 10))
+        ret, thresh = cv2.threshold(blurred, 50, 255, cv2.THRESH_BINARY)
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         # calculate contour stats
