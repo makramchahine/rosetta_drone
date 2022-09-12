@@ -138,6 +138,15 @@ class RNNControlNode:
                 vel_cmd[0, 3] = vel_cmd[0, 3] * self.yaw_multiplier
 
                 if not self.detected:
+                    obj = self.best_object(im_network=im_network, im_smaller=im_smaller)
+                    if obj is not None:
+                        centroid, area = obj
+                        print(centroid)
+                        # Decide whether target has been attended to by looking at saliencey area
+                        # if empty direction list, we are attending to the ultimate target
+                        if area > TARGET_AREA:
+                            self.detected = True
+                            
                     if not self.guard:
                         # GET 2 SALIENCY MAPS
                         saliency = compute_visualbackprop(im_network, self.conv_head)
@@ -146,15 +155,6 @@ class RNNControlNode:
                         saliency_bis = saliency_bis.numpy()
                         ret, saliency = cv2.threshold(saliency, 50, 255, cv2.THRESH_BINARY)
                         ret_bis, saliency_bis = cv2.threshold(saliency_bis, 50, 255, cv2.THRESH_BINARY)
-
-                        obj = self.best_object(saliency=saliency, im_smaller=im_smaller)
-                        if obj is not None:
-                            centroid, area = obj
-                            print(centroid)
-                            # Decide whether target has been attended to by looking at saliencey area
-                            # if empty direction list, we are attending to the ultimate target
-                            if area > TARGET_AREA:
-                                self.detected = True
 
                         # sal = convert_to_color_frame(saliency)
                         # sal = cv2.resize(sal, (256 * 3, 144 * 3))
@@ -228,12 +228,12 @@ class RNNControlNode:
         """
         self.image_msg = msg
 
-    def best_object(self, saliency: np.ndarray, im_smaller: Optional[np.ndarray] = None) -> Optional[Tuple[np.ndarray, float]]:
+    def best_object(self, im_network: np.ndarray, im_smaller: Optional[np.ndarray] = None) -> Optional[Tuple[np.ndarray, float]]:
         """
         Func that finds the contour in the blurred saliency map that has the highest average pixel value and returns
         its centroid and area
 
-        :param thresh: shape height x width x channels. Normalized color image taken from drone for network
+        :param im_network: shape height x width x channels. Normalized color image taken from drone for network
         consumption
         :param im_smaller: If self.display_contour is True, this image will be used for visualization. This image does
         not need to be provided if the debug display is not enabled and has no effect on control output
@@ -241,7 +241,7 @@ class RNNControlNode:
         area of polygon
         """
         # use for normalize, not color convert
-        # saliency = convert_to_color_frame(compute_visualbackprop(img=im_network, activation_model=self.conv_head))
+        saliency = convert_to_color_frame(compute_visualbackprop(img=im_network, activation_model=self.conv_head))
 
         # find contours in saliency map
         saliency_gray = cv2.cvtColor(saliency, cv2.COLOR_BGR2GRAY)  # shape: h x w
