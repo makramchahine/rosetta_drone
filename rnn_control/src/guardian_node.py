@@ -144,7 +144,7 @@ class RNNControlNode:
                         print(centroid)
                         # Decide whether target has been attended to by looking at saliencey area
                         # if empty direction list, we are attending to the ultimate target
-                        if area > TARGET_AREA:
+                        if area > TARGET_AREA and centroid[0]>85 and centroid[0]<170 and centroid[1]>48 and centroid[1]<96:
                             self.detected = True
 
                     if not self.guard:
