@@ -146,7 +146,7 @@ class RNNControlNode:
                         # if empty direction list, we are attending to the ultimate target
                         if area > TARGET_AREA:
                             self.detected = True
-                            
+
                     if not self.guard:
                         # GET 2 SALIENCY MAPS
                         saliency = compute_visualbackprop(im_network, self.conv_head)
@@ -218,6 +218,9 @@ class RNNControlNode:
                 # cv2.imshow("HUUGHMAN", sal_bis)
 
                 # cv2.waitKey(1)
+
+            else:
+                self.detected = False
 
     def _image_cb(self, msg: Image):
         """
