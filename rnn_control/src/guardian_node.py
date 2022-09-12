@@ -2,7 +2,7 @@
 import os
 import sys
 import threading
-from typing import Optional
+from typing import Optional, Tuple
 
 # noinspection PyUnresolvedReferences
 import cv2  # need to import cv2 before tensorflow on drone or else crashes
@@ -228,7 +228,7 @@ class RNNControlNode:
         """
         self.image_msg = msg
 
-    def best_object(self, thresh: ndarray, im_smaller: Optional[ndarray] = None) -> Optional[Tuple[ndarray, float]]:
+    def best_object(self, thresh: np.ndarray, im_smaller: Optional[np.ndarray] = None) -> Optional[Tuple[np.ndarray, float]]:
         """
         Func that finds the contour in the blurred saliency map that has the highest average pixel value and returns
         its centroid and area
