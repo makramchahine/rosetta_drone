@@ -228,7 +228,7 @@ class RNNControlNode:
         """
         self.image_msg = msg
 
-    def best_object(self, saliencie: np.ndarray, im_smaller: Optional[np.ndarray] = None) -> Optional[Tuple[np.ndarray, float]]:
+    def best_object(self, saliency: np.ndarray, im_smaller: Optional[np.ndarray] = None) -> Optional[Tuple[np.ndarray, float]]:
         """
         Func that finds the contour in the blurred saliency map that has the highest average pixel value and returns
         its centroid and area
