@@ -11,7 +11,8 @@ import numpy as np
 import rospy
 from sensor_msgs.msg import Image
 
-from control_utils import process_image_network, obtain_control_authority, release_control_authority, send_vel_cmd, find_checkpoint_path, \
+from control_utils import process_image_network, obtain_control_authority, release_control_authority, send_vel_cmd, \
+    find_checkpoint_path, \
     generate_dummy_image, saliency_center
 from logger_node import Logger
 
@@ -24,19 +25,33 @@ from drone_causality.keras_models import IMAGE_SHAPE
 from drone_causality.analysis.visual_backprop import get_conv_head, compute_visualbackprop
 from drone_causality.analysis.vis_utils import convert_to_color_frame
 
+MIN_AREA = 50  # to mask candidate contours that have area less than this
+UP_VEL = 0.1 # up speed
+TARGET_AREA = 1200  # based on chair size in snowy run
 CONTROL_AUTHORITY_TIME = 3
 
+def poly_area(contour) -> float:
+    """
+    Area of polygon using shoelace formula
+
+    :param contour: ndarray of shape num_points x 1 x 2
+    :return: area of polygon
+    """
+    x, y = np.squeeze(contour, axis=1).T
+    return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
 
 class RNNControlNode:
-    def __init__(self, params_path: str, checkpoint_path: str, params_path_bis: str, checkpoint_path_bis: str, log_path: str, log_suffix: str = "",
+    def __init__(self, params_path: str, checkpoint_path: str, params_path_bis: str, checkpoint_path_bis: str,
+                 log_path: str, log_suffix: str = "",
                  pitch_only: bool = False, yaw_multiplier: float = 1.0):
         rospy.init_node("rnn_control_node")
 
         self.guard = False
-        self.threshold = 30
+        self.threshold = 9999999999
         self.t0 = -9999999
         self.condi = False
-        self.guardian_time = 6
+        self.guardian_time = 4
+        self.detected = False
         # get model params and load model
         # make params path and checkpoint path relative
         params_path = os.path.join(SCRIPT_DIR, params_path)
@@ -64,7 +79,7 @@ class RNNControlNode:
         self.hiddens_bis = generate_hidden_list(model=self.single_step_model_bis, return_numpy=True)
         self.conv_head_bis = get_conv_head(checkpoint_path_bis, model_params_bis)
         # run dummy input through network to finish loading
-        o2= self.single_step_model_bis.predict([dummy_image, *self.hiddens_bis])
+        o2 = self.single_step_model_bis.predict([dummy_image, *self.hiddens_bis])
         print('Loaded both models')
 
         # print strs
@@ -121,63 +136,88 @@ class RNNControlNode:
                     vel_cmd[0, 1:] = 0
 
                 vel_cmd[0, 3] = vel_cmd[0, 3] * self.yaw_multiplier
-                
-                if not self.guard:
-                    # GET 2 SALIENCY MAPS
-                    saliency = compute_visualbackprop(im_network, self.conv_head)
-                    saliency_bis = compute_visualbackprop(im_network, self.conv_head_bis)
-                    saliency = saliency.numpy()
-                    saliency_bis = saliency_bis.numpy()
-                    #ret, saliency = cv2.threshold(saliency, 50, 255, cv2.THRESH_BINARY)
-                    #ret_bis, saliency_bis = cv2.threshold(saliency_bis, 50, 255, cv2.THRESH_BINARY)
 
-                    #sal = convert_to_color_frame(saliency)
-                    #sal = cv2.resize(sal, (256 * 3, 144 * 3))
-                    #sal_bis = convert_to_color_frame(saliency_bis)
-                    #sal_bis = cv2.resize(sal_bis, (256 * 3, 144 * 3))
-
-                    #cv2.imshow("GUARDIAN", sal)
-                    #cv2.imshow("HUUGHMAN", sal_bis)
-
-                    # COMPARE SALIENCY CENTERS
-                    c = np.array(saliency_center(saliency))
-                    c_bis = np.array(saliency_center(saliency_bis))
-
-                    d = np.linalg.norm(c-c_bis)
-                    self.condi = d>self.threshold
-                else:
-                    self.condi = False
-               
-                if self.condi:
+                if not self.detected:
                     if not self.guard:
-                        # strip batch dim for logger, shape before: 1 x 4, after 4
-                        obtain_control_authority(ca_service=self.ca_service,
-                                                 joystick_mode_service=self.joystick_mode_service, )
-                        self.guard=True
-                        self.t0 = rospy.Time.now().to_sec()
+                        # GET 2 SALIENCY MAPS
+                        saliency = compute_visualbackprop(im_network, self.conv_head)
+                        saliency_bis = compute_visualbackprop(im_network, self.conv_head_bis)
+                        saliency = saliency.numpy()
+                        saliency_bis = saliency_bis.numpy()
+                        ret, saliency = cv2.threshold(saliency, 50, 255, cv2.THRESH_BINARY)
+                        ret_bis, saliency_bis = cv2.threshold(saliency_bis, 50, 255, cv2.THRESH_BINARY)
 
-                    send_vel_cmd(vel_cmd=vel_cmd,
-                                 joystick_action_service=self.joystick_action_service)
+                        obj = self.best_object(thresh=saliency, im_smaller=im_smaller)
+                        if obj is not None:
+                            centroid, area = obj
+                            print(centroid)
+                            # Decide whether target has been attended to by looking at saliencey area
+                            # if empty direction list, we are attending to the ultimate target
+                            if area > TARGET_AREA:
+                                self.detected = True
+
+                        # sal = convert_to_color_frame(saliency)
+                        # sal = cv2.resize(sal, (256 * 3, 144 * 3))
+                        # sal_bis = convert_to_color_frame(saliency_bis)
+                        # sal_bis = cv2.resize(sal_bis, (256 * 3, 144 * 3))
+
+                        # cv2.imshow("GUARDIAN", sal)
+                        # cv2.imshow("HUUGHMAN", sal_bis)
+
+                        # COMPARE SALIENCY CENTERS
+                        c = np.array(saliency_center(saliency))
+                        c_bis = np.array(saliency_center(saliency_bis))
+
+                        d = np.linalg.norm(c - c_bis)
+                        self.condi = d > self.threshold
+                    else:
+                        self.condi = False
+
+                    if self.condi:
+                        if not self.guard:
+                            # strip batch dim for logger, shape before: 1 x 4, after 4
+                            obtain_control_authority(ca_service=self.ca_service,
+                                                     joystick_mode_service=self.joystick_mode_service, )
+                            self.guard = True
+                            self.t0 = rospy.Time.now().to_sec()
+
+                        send_vel_cmd(vel_cmd=vel_cmd,
+                                     joystick_action_service=self.joystick_action_service)
+
+                    else:
+                        t = rospy.Time.now().to_sec()
+                        if (t - self.t0) > self.guardian_time:
+                            if self.guard:
+                                release_control_authority(ca_service=self.ca_service,
+                                                          joystick_mode_service=self.joystick_mode_service, )
+                                self.guard = False
+
+                            vel_cmd[0, 0] = 0.0
+                            vel_cmd[0, 1] = 0.0
+                            vel_cmd[0, 2] = 0.0
+                            vel_cmd[0, 3] = 0.0
+                        else:
+                            send_vel_cmd(vel_cmd=vel_cmd,
+                                         joystick_action_service=self.joystick_action_service)
 
                 else:
-                    t = rospy.Time.now().to_sec()
-                    if (t-self.t0)>self.guardian_time:
-                        if self.guard:
-                            release_control_authority(ca_service=self.ca_service,
-                                                      joystick_mode_service=self.joystick_mode_service, )
-                            self.guard=False
+                    obtain_control_authority(ca_service=self.ca_service,
+                                             joystick_mode_service=self.joystick_mode_service, )
+                    vel_cmd[0, 0] = 0.0
+                    vel_cmd[0, 1] = 0.0
+                    vel_cmd[0, 2] = UP_VEL
+                    vel_cmd[0, 3] = 0.0
+                    send_vel_cmd(vel_cmd=vel_cmd,
+                             joystick_action_service=self.joystick_action_service)
 
-                        vel_cmd[0, 0] = 0.0
-                        vel_cmd[0, 1] = 0.0
-                        vel_cmd[0, 2] = 0.0
-                        vel_cmd[0, 3] = 0.0
-                    else:
-                        send_vel_cmd(vel_cmd=vel_cmd,
-                                 joystick_action_service=self.joystick_action_service)
+
 
                 print(self.guard, f"Distance between saliency centers: {d}", vel_cmd)
                 self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=latest_msg.header.stamp.to_sec())
-                #cv2.waitKey(1)
+                # cv2.imshow("GUARDIAN", sal)
+                # cv2.imshow("HUUGHMAN", sal_bis)
+
+                # cv2.waitKey(1)
 
     def _image_cb(self, msg: Image):
         """
@@ -187,6 +227,59 @@ class RNNControlNode:
         :return:
         """
         self.image_msg = msg
+
+    def best_object(self, thresh: ndarray, im_smaller: Optional[ndarray] = None) -> Optional[Tuple[ndarray, float]]:
+        """
+        Func that finds the contour in the blurred saliency map that has the highest average pixel value and returns
+        its centroid and area
+
+        :param thresh: shape height x width x channels. Normalized color image taken from drone for network
+        consumption
+        :param im_smaller: If self.display_contour is True, this image will be used for visualization. This image does
+        not need to be provided if the debug display is not enabled and has no effect on control output
+        :return: centroid (ndarray of 2 els (x, y) where x is vertical and y is horizontal) and area, float representing
+        area of polygon
+        """
+        # # use for normalize, not color convert
+        # saliency = convert_to_color_frame(compute_visualbackprop(img=im_network, activation_model=self.conv_head))
+        #
+        # # find contours in saliency map
+        # saliency_gray = cv2.cvtColor(saliency, cv2.COLOR_BGR2GRAY)  # shape: h x w
+        # blurred = cv2.blur(saliency_gray, (10, 10))
+        # ret, thresh = cv2.threshold(blurred, 50, 255, cv2.THRESH_BINARY)
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        # calculate contour stats
+        num_contour_points = []
+        average_contour_values = []
+        contour_centroids = []
+        contour_areas = []
+        for i, contour in enumerate(contours):
+            area = poly_area(contours[i])
+            if area > MIN_AREA:
+                # calculate average pixel value by multiplying against contour mask
+                mask = cv2.drawContours(np.zeros_like(saliency_gray, dtype=np.uint8), contours, i,
+                                        (1, 1, 1),
+                                        thickness=cv2.FILLED)
+                point_count = np.sum(mask)
+
+                num_contour_points.append(point_count)
+                total_brightness = np.sum(mask * saliency_gray)
+                average_contour_values.append(total_brightness / point_count)
+                contour_centroids.append(np.mean(np.squeeze(contour, axis=1), axis=0))
+                contour_areas.append(area)
+
+        # return best contour
+        if len(average_contour_values) == 0:
+            # no contours found
+            return None
+        else:
+            brightest = np.argmax(average_contour_values)
+            centroid = contour_centroids[brightest]
+            area = contour_areas[brightest]
+
+            return centroid, area
+
 
 
 if __name__ == "__main__":
@@ -202,8 +295,9 @@ if __name__ == "__main__":
     yaw_multiplier_ros = rospy.get_param("yaw_multiplier", default=1.0)
     checkpoint_path_ros = find_checkpoint_path(params_path=params_path_ros, checkpoint_path=checkpoint_path_ros,
                                                model_name=model_name_ros)
-    checkpoint_path_rosbis = find_checkpoint_path(params_path=params_path_rosbis, checkpoint_path=checkpoint_path_rosbis,
-                                               model_name=model_name_rosbis)
+    checkpoint_path_rosbis = find_checkpoint_path(params_path=params_path_rosbis,
+                                                  checkpoint_path=checkpoint_path_rosbis,
+                                                  model_name=model_name_rosbis)
     if log_suffix_ros == "":
         log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
 
