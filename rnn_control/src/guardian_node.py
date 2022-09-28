@@ -27,6 +27,7 @@ from drone_causality.analysis.vis_utils import convert_to_color_frame
 
 MIN_AREA = 50  # to mask candidate contours that have area less than this
 UP_VEL = 0.1 # up speed
+MAN_DUR = 8 # manoeuvre duration
 TARGET_AREA = 1200  # based on chair size in snowy run
 CONTROL_AUTHORITY_TIME = 3
 
