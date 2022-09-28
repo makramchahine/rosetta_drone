@@ -49,6 +49,7 @@ class RNNControlNode:
         self.guard = False
         self.threshold = 9999999999
         self.t0 = -9999999
+        self.t1 = -9999999
         self.condi = False
         self.guardian_time = 4
         self.detected = False
@@ -146,6 +147,7 @@ class RNNControlNode:
                         # if empty direction list, we are attending to the ultimate target
                         if area > TARGET_AREA and centroid[0]>85 and centroid[0]<170 and centroid[1]>48 and centroid[1]<96:
                             self.detected = True
+                            self.t1 = rospy.Time.now().to_sec()
 
                     if not self.guard:
                         # GET 2 SALIENCY MAPS
@@ -201,6 +203,10 @@ class RNNControlNode:
                                          joystick_action_service=self.joystick_action_service)
 
                 else:
+                    delta_t = rospy.Time.now().to_sec() - self.t1
+                    if delta_t > MAN_DUR:
+                        self.detected = False
+
                     obtain_control_authority(ca_service=self.ca_service,
                                              joystick_mode_service=self.joystick_mode_service, )
                     vel_cmd[0, 0] = 0.0
