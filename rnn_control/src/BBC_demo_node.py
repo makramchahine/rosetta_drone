@@ -135,7 +135,7 @@ class BBCControlNode:
                         self.hiddens = out[1:]  # list num_hidden long, each el is batch x hidden_dim
 
                     txt_dsp = "Looking for target"
-                    cv2.putText(saliency, txt_dsp, (0, TEXT_BOX_HEIGHT // 2), cv2.FONT_HERSHEY_SIMPLEX, .5,
+                    cv2.putText(saliency, txt_dsp, (0, TEXT_BOX_HEIGHT // 2), cv2.FONT_HERSHEY_SIMPLEX, .25,
                                 (0, 128, 255), 1, cv2.LINE_AA)
 
 
@@ -151,7 +151,7 @@ class BBCControlNode:
                         vel_cmd = np.array([[0, 0, UP_VEL, 0]], dtype=np.float32)
 
                     txt_dsp = "Target detected, switching manoeuvre"
-                    cv2.putText(saliency, txt_dsp, (0, TEXT_BOX_HEIGHT // 2), cv2.FONT_HERSHEY_SIMPLEX, .5,
+                    cv2.putText(saliency, txt_dsp, (0, TEXT_BOX_HEIGHT // 2), cv2.FONT_HERSHEY_SIMPLEX, .25,
                                 (0, 255, 0), 1, cv2.LINE_AA)
 
                 # mutate vel_cmd according to options
@@ -173,9 +173,11 @@ class BBCControlNode:
                 print(vel_cmd)
                 img_stack = [im_smaller[..., ::-1], saliency]
                 stacked_img = np.concatenate(img_stack, axis=0)
-                cv2.imshow("Monitor", stacked_img)
                 height, width, channels = np.shape(saliency)
+                dim = (width*3, height*6)
+                resized = cv2.resize(stacked_img, dim, interpolation=cv2.INTER_AREA)
                 cv2.resizeWindow("Monitor", width*3, height*6)
+
                 cv2.waitKey(1)
 
     def _image_cb(self, msg: Image):
