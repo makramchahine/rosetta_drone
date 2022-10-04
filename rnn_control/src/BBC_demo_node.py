@@ -3,7 +3,6 @@ import os
 import sys
 import threading
 from typing import Optional, Tuple
-from time import time
 
 # noinspection PyUnresolvedReferences
 import cv2  # need to import cv2 before tensorflow on drone or else crashes
@@ -121,7 +120,7 @@ class BBCControlNode:
                         # if False:
                         if area > TARGET_AREA and centroid[0]>85 and centroid[0]<170 and centroid[1]>48 and centroid[1]<96:
                             self.go_to_next = True
-                            tic = time.time()
+                            tic = rospy.Time.now().to_sec()
                             vel_cmd = np.array([[0, 0, UP_VEL, 0]], dtype=np.float32)
                         # Else we are still not close enough, use network to continue navigation
                         else:
@@ -141,7 +140,7 @@ class BBCControlNode:
 
 
                 else:  # switching targets
-                    delta_t = time.time() - tic
+                    delta_t = rospy.Time.now().to_sec() - tic
                     if delta_t > UP_DURATION:
                         self.go_to_next = False
                         # run inference on im_network
