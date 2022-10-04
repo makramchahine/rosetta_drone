@@ -174,8 +174,8 @@ class BBCControlNode:
                 img_stack = [im_smaller[..., ::-1], saliency]
                 stacked_img = np.concatenate(img_stack, axis=0)
                 cv2.imshow("Monitor", stacked_img)
-                height, width, channels = stacked_img.shape()
-                cv2.resizeWindow("Monitor", width*3, height*3)
+                height, width, channels = saliecy.shape()
+                cv2.resizeWindow("Monitor", width*3, height*6)
                 cv2.waitKey(1)
 
     def _image_cb(self, msg: Image):
