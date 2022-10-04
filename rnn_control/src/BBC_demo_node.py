@@ -175,7 +175,7 @@ class BBCControlNode:
                 stacked_img = np.concatenate(img_stack, axis=0)
                 height, width, channels = np.shape(saliency)
                 dim = (width*3, height*6)
-                resized = cv2.resize(stacked_img, dim, interpolation=cv2.INTER_AREA)
+                resized = cv2.resize(stacked_img, dim, interpolation=cv2.INTER_NEAREST)
                 cv2.imshow("Monitor", resized)
                 cv2.waitKey(1)
 
