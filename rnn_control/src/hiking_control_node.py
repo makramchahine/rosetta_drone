@@ -234,6 +234,6 @@ if __name__ == "__main__":
     if log_suffix_ros == "":
         log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
 
-    node = HikingControlNode(log_path=log_path_ros, params_path=params_path_ros,
+    node = RNNControlNode(log_path=log_path_ros, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros, pitch_only=pitch_only_ros,
                           yaw_multiplier=yaw_multiplier_ros)
