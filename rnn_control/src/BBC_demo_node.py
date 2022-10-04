@@ -173,7 +173,7 @@ class BBCControlNode:
 
                 img_stack = [im_smaller, saliency]
                 stacked_img = np.concatenate(img_stack, axis=0)
-                cv.imshow("Monitor", stacked_img)
+                cv2.imshow("Monitor", stacked_img)
 
     def _image_cb(self, msg: Image):
         """
