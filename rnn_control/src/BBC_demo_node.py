@@ -171,9 +171,11 @@ class BBCControlNode:
 
                 self.logger.log(image=im_smaller, vel_cmd=vel_cmd, rtime=latest_msg.header.stamp.to_sec())
 
+                print(vel_cmd)
                 img_stack = [im_smaller, saliency]
                 stacked_img = np.concatenate(img_stack, axis=0)
                 cv2.imshow("Monitor", stacked_img)
+                cv2.waitKey(0)
 
     def _image_cb(self, msg: Image):
         """
