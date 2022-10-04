@@ -44,7 +44,7 @@ def poly_area(contour) -> float:
     return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
 
 
-class HikingControlNode:
+class BBCControlNode:
     def __init__(self, params_path: str, checkpoint_path: str, log_path: str, log_suffix: str = "",
                  pitch_only: bool = False, yaw_multiplier: float = 1.0):
         rospy.init_node("rnn_control_node")
@@ -247,6 +247,6 @@ if __name__ == "__main__":
     if log_suffix_ros == "":
         log_suffix_ros = os.path.splitext(os.path.basename(params_path_ros))[0]
 
-    node = RNNControlNode(log_path=log_path_ros, params_path=params_path_ros,
+    node = BBCControlNode(log_path=log_path_ros, params_path=params_path_ros,
                           checkpoint_path=checkpoint_path_ros, log_suffix=log_suffix_ros, pitch_only=pitch_only_ros,
                           yaw_multiplier=yaw_multiplier_ros)
