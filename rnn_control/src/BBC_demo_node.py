@@ -31,7 +31,7 @@ UP_VEL = 0.3  # turn rate to look at new target
 UP_DURATION = 6  # seconds of turning
 TARGET_AREA = 1250  # based on chair size in snowy run
 CONTROL_AUTHORITY_TIME = 3
-
+TEXT_BOX_HEIGHT = 30
 
 def poly_area(contour) -> float:
     """
