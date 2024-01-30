@@ -1,5 +1,5 @@
 # Rosetta Drone
-This repository contains all code run onboard the drone to complete online testinf for the paper "Robust Visual Flight Navigation with Liquid Neural Networks". For training/offline analysis code, see [this repository](https://github.com/dolphonie/drone_causality)
+This repository contains all code run onboard the drone to complete online testinf for the paper "Robust Visual Flight Navigation with Liquid Neural Networks". For training/offline analysis code, see [this repository](https://github.com/makramchahine/drone_causality)
 
 ## Installation Guide
 ### Hardware
